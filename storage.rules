@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Path convention: users/{uid}/plants/{plantId}/{uuid}.jpg
+    // Read is open — Storage download URLs are unguessable tokens, and the
+    // OpenAI vision API fetches images directly by URL. Create/update are
+    // locked to the owning user with an 8MB size cap. Delete is separated
+    // out because request.resource is null on delete — folding it into a
+    // single `write` rule that checks request.resource.size denies every
+    // delete (caught by the E2E delete-plant test against the Storage
+    // emulator).
+    match /users/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 8 * 1024 * 1024;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

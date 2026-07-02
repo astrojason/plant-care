@@ -1,0 +1,91 @@
+import { describe, expect, it } from "vitest";
+import { mapCareEventDoc, mapDiagnosisDoc, mapPlantDoc } from "./mappers";
+
+function ts(date: Date) {
+  return { toDate: () => date };
+}
+
+describe("mapPlantDoc", () => {
+  it("maps a full Firestore plant document to a Plant", () => {
+    const plant = mapPlantDoc("plant-1", {
+      nickname: "Fig",
+      speciesCommonName: "Fiddle Leaf Fig",
+      speciesScientificName: "Ficus lyrata",
+      speciesConfidence: 0.9,
+      location: "Living room",
+      primaryPhotoUrl: "https://x/y.jpg",
+      wateringIntervalDays: 7,
+      fertilizingIntervalDays: 30,
+      mistingIntervalDays: null,
+      lastWateredAt: ts(new Date("2026-06-25")),
+      lastFertilizedAt: null,
+      lastMistedAt: null,
+      createdAt: ts(new Date("2026-01-01")),
+      updatedAt: ts(new Date("2026-01-02")),
+    });
+
+    expect(plant.id).toBe("plant-1");
+    expect(plant.nickname).toBe("Fig");
+    expect(plant.lastWateredAt).toEqual(new Date("2026-06-25"));
+    expect(plant.lastFertilizedAt).toBeNull();
+    expect(plant.mistingIntervalDays).toBeNull();
+  });
+
+  it("defaults missing optional fields to null", () => {
+    const plant = mapPlantDoc("plant-1", {
+      nickname: "Fig",
+      primaryPhotoUrl: "https://x/y.jpg",
+    });
+
+    expect(plant.speciesCommonName).toBeNull();
+    expect(plant.wateringIntervalDays).toBeNull();
+    expect(plant.lastWateredAt).toBeNull();
+  });
+});
+
+describe("mapCareEventDoc", () => {
+  it("maps a Firestore care event document", () => {
+    const event = mapCareEventDoc("event-1", {
+      eventType: "watered",
+      notes: "a little extra this time",
+      occurredAt: ts(new Date("2026-06-25T10:00:00Z")),
+    });
+
+    expect(event).toEqual({
+      id: "event-1",
+      eventType: "watered",
+      notes: "a little extra this time",
+      occurredAt: new Date("2026-06-25T10:00:00Z"),
+    });
+  });
+
+  it("defaults notes to null when absent", () => {
+    const event = mapCareEventDoc("event-1", {
+      eventType: "misted",
+      occurredAt: ts(new Date("2026-06-25T10:00:00Z")),
+    });
+
+    expect(event.notes).toBeNull();
+  });
+});
+
+describe("mapDiagnosisDoc", () => {
+  it("maps a Firestore diagnosis document", () => {
+    const diagnosis = mapDiagnosisDoc("diag-1", {
+      photoId: "photo-1",
+      detectedIssues: [{ issue: "Overwatering", confidence: 0.7, symptomsObserved: ["Yellow leaves"] }],
+      suggestedTreatment: "Water less often.",
+      urgency: "medium",
+      createdAt: ts(new Date("2026-06-25T10:00:00Z")),
+    });
+
+    expect(diagnosis).toEqual({
+      id: "diag-1",
+      photoId: "photo-1",
+      detectedIssues: [{ issue: "Overwatering", confidence: 0.7, symptomsObserved: ["Yellow leaves"] }],
+      suggestedTreatment: "Water less often.",
+      urgency: "medium",
+      createdAt: new Date("2026-06-25T10:00:00Z"),
+    });
+  });
+});

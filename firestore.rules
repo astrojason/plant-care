@@ -1,0 +1,12 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Ownership is enforced by the path itself: every document a user can
+    // read or write lives under users/{uid}/..., so this single rule covers
+    // plants, photos, careEvents, and diagnoses subcollections.
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

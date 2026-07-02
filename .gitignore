@@ -12,6 +12,17 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# firebase emulators
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+storage-debug.log
+.firebase/
 
 # next.js
 /.next/
@@ -32,6 +43,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.local.example
 
 # vercel
 .vercel
