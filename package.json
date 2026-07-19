@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "deploy": "bash scripts/deploy.sh",
     "test:e2e": "playwright test"
   },
   "dependencies": {
