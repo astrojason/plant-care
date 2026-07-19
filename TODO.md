@@ -18,12 +18,24 @@ local emulators for tests — there's no real backend behind this app yet.
       `NEXT_PUBLIC_FIREBASE_*` web config, `FIREBASE_SERVICE_ACCOUNT_KEY`, and `OPENAI_API_KEY`
 - [ ] Add the same env vars to the Vercel project so the production deploy has them
 
+## Deploy to Vercel
+
+The Vercel CLI is already authenticated as `astrojason`, but no project is linked yet.
+
+- [ ] Run `npm run deploy` (runs `scripts/deploy.sh`: `npm ci`, `npm run build`, then
+      `vercel deploy --prod`) — the first run will prompt to link or create the Vercel project
+- [ ] In the Vercel project's Settings > Environment Variables, add the same values from
+      `.env.local`: all `NEXT_PUBLIC_FIREBASE_*` vars, `FIREBASE_SERVICE_ACCOUNT_KEY`,
+      `OPENAI_API_KEY`, and `OPENAI_VISION_MODEL`
+- [ ] Re-run `npm run deploy` after adding env vars so the build picks them up
+- [ ] Open the deployed URL and confirm the login page loads
+
 ## Ship the role-approval feature (commit `4b34731`)
 
 - [ ] Deploy the updated Firestore/Storage rules to the live Firebase project:
       `firebase deploy --only firestore:rules,storage:rules`
 - [ ] Seed your account as SUPERADMIN (requires `FIREBASE_SERVICE_ACCOUNT_KEY` in `.env.local`):
       `npm run set-user-role -- jason@astrojason.com SUPERADMIN`
-- [ ] Deploy the app itself: `npm run deploy` (builds and runs `vercel deploy --prod`)
-- [ ] Sign in once for real and confirm you land on `/dashboard`, not the "Waiting for approval" screen
+- [ ] Sign in on the deployed app and confirm you land on `/dashboard`, not the
+      "Waiting for approval" screen
 - [ ] Visit `/admin` and confirm the user list loads and you can approve a second test account
