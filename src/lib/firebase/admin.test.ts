@@ -8,7 +8,17 @@ const mockInitializeApp = vi.fn((...args: unknown[]) => {
 });
 const mockCert = vi.fn((sa: unknown) => ({ __cert: sa }));
 const mockVerifyIdToken = vi.fn();
-const mockGetAuth = vi.fn(() => ({ verifyIdToken: mockVerifyIdToken }));
+const mockSetCustomUserClaims = vi.fn();
+const mockGetUserByEmail = vi.fn();
+const mockGetUser = vi.fn();
+const mockListUsers = vi.fn();
+const mockGetAuth = vi.fn(() => ({
+  verifyIdToken: mockVerifyIdToken,
+  setCustomUserClaims: mockSetCustomUserClaims,
+  getUserByEmail: mockGetUserByEmail,
+  getUser: mockGetUser,
+  listUsers: mockListUsers,
+}));
 
 vi.mock("firebase-admin/app", () => ({
   initializeApp: (...args: unknown[]) => mockInitializeApp(...args),
@@ -28,6 +38,10 @@ beforeEach(() => {
   mockInitializeApp.mockClear();
   mockCert.mockClear();
   mockVerifyIdToken.mockClear();
+  mockSetCustomUserClaims.mockClear();
+  mockGetUserByEmail.mockClear();
+  mockGetUser.mockClear();
+  mockListUsers.mockClear();
   mockGetAuth.mockClear();
   process.env = { ...ORIGINAL_ENV };
   delete process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
@@ -88,5 +102,87 @@ describe("verifyIdToken", () => {
     await verifyIdToken("token-b");
 
     expect(mockInitializeApp).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("setUserRole", () => {
+  it("sets the role custom claim on the given uid", async () => {
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY = JSON.stringify({ project_id: "plant-care-test" });
+    mockSetCustomUserClaims.mockResolvedValue(undefined);
+
+    const { setUserRole } = await import("./admin");
+    await setUserRole("user-123", "ADMIN");
+
+    expect(mockSetCustomUserClaims).toHaveBeenCalledWith("user-123", { role: "ADMIN" });
+  });
+});
+
+describe("getUserByEmail", () => {
+  it("returns the user's uid, email, and role from custom claims", async () => {
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY = JSON.stringify({ project_id: "plant-care-test" });
+    mockGetUserByEmail.mockResolvedValue({
+      uid: "user-123",
+      email: "jason@astrojason.com",
+      customClaims: { role: "ADMIN" },
+    });
+
+    const { getUserByEmail } = await import("./admin");
+    const result = await getUserByEmail("jason@astrojason.com");
+
+    expect(mockGetUserByEmail).toHaveBeenCalledWith("jason@astrojason.com");
+    expect(result).toEqual({ uid: "user-123", email: "jason@astrojason.com", role: "ADMIN" });
+  });
+
+  it("reports role as null when no valid role claim is set", async () => {
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY = JSON.stringify({ project_id: "plant-care-test" });
+    mockGetUserByEmail.mockResolvedValue({ uid: "user-123", email: "new@example.com", customClaims: undefined });
+
+    const { getUserByEmail } = await import("./admin");
+    const result = await getUserByEmail("new@example.com");
+
+    expect(result).toEqual({ uid: "user-123", email: "new@example.com", role: null });
+  });
+});
+
+describe("getUserById", () => {
+  it("returns the user's uid, email, and role from custom claims", async () => {
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY = JSON.stringify({ project_id: "plant-care-test" });
+    mockGetUser.mockResolvedValue({
+      uid: "user-123",
+      email: "jason@astrojason.com",
+      customClaims: { role: "SUPERADMIN" },
+    });
+
+    const { getUserById } = await import("./admin");
+    const result = await getUserById("user-123");
+
+    expect(mockGetUser).toHaveBeenCalledWith("user-123");
+    expect(result).toEqual({ uid: "user-123", email: "jason@astrojason.com", role: "SUPERADMIN" });
+  });
+});
+
+describe("listAllUsers", () => {
+  it("returns all users across pages, mapped with their role", async () => {
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY = JSON.stringify({ project_id: "plant-care-test" });
+    mockListUsers
+      .mockResolvedValueOnce({
+        users: [{ uid: "user-1", email: "a@example.com", customClaims: { role: "USER" } }],
+        pageToken: "next-page",
+      })
+      .mockResolvedValueOnce({
+        users: [{ uid: "user-2", email: "b@example.com", customClaims: undefined }],
+        pageToken: undefined,
+      });
+
+    const { listAllUsers } = await import("./admin");
+    const result = await listAllUsers();
+
+    expect(mockListUsers).toHaveBeenCalledTimes(2);
+    expect(mockListUsers).toHaveBeenNthCalledWith(1, 1000, undefined);
+    expect(mockListUsers).toHaveBeenNthCalledWith(2, 1000, "next-page");
+    expect(result).toEqual([
+      { uid: "user-1", email: "a@example.com", role: "USER" },
+      { uid: "user-2", email: "b@example.com", role: null },
+    ]);
   });
 });

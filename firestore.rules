@@ -4,9 +4,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Ownership is enforced by the path itself: every document a user can
     // read or write lives under users/{uid}/..., so this single rule covers
-    // plants, photos, careEvents, and diagnoses subcollections.
+    // plants, photos, careEvents, and diagnoses subcollections. The role
+    // custom claim gates access to everyone else: newly signed-in accounts
+    // have no role claim (PENDING) until an admin approves them via the
+    // role custom claim, set server-side only (see src/lib/firebase/admin.ts).
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if request.auth != null
+                       && request.auth.uid == uid
+                       && request.auth.token.role in ['USER', 'ADMIN', 'SUPERADMIN'];
     }
   }
 }

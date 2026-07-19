@@ -1,6 +1,6 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { signInWithEmulator } from "./helpers/auth";
+import { approveUserRole, signInWithEmulator } from "./helpers/auth";
 
 const JPEG_FIXTURE = path.join(process.cwd(), "e2e", "fixtures", "test-plant.jpg");
 const HEIC_FIXTURE = path.join(process.cwd(), "e2e", "fixtures", "test-plant.heic");
@@ -62,4 +62,28 @@ test("HEIC photos are converted and identified like any other photo", async ({ p
   await page.setInputFiles("#photo-upload", HEIC_FIXTURE);
   await expect(page.getByRole("button", { name: "Save plant" })).toBeVisible({ timeout: 20000 });
   await expect(page.getByLabel("Common name")).toHaveValue("Fiddle Leaf Fig");
+});
+
+test("a newly signed-in account is blocked until an admin approves it", async ({ page, context }) => {
+  const email = "pending-approval@example.com";
+  await signInWithEmulator(page, context, email, "PENDING");
+
+  await expect(page.getByRole("heading", { name: "Waiting for approval" })).toBeVisible();
+  await expect(page.getByText("No plants yet. Add your first one!")).not.toBeVisible();
+
+  await approveUserRole(email, "USER");
+  await page.getByRole("button", { name: "Check again" }).click();
+
+  await expect(page.getByRole("heading", { name: "Your plants" })).toBeVisible();
+});
+
+test("the admin page lists users and blocks non-admins", async ({ page, context }) => {
+  await signInWithEmulator(page, context, "not-an-admin@example.com", "USER");
+  await page.goto("/admin");
+  await expect(page.getByText("You don't have access to this page.")).toBeVisible();
+
+  await signInWithEmulator(page, context, "site-admin@example.com", "ADMIN");
+  await page.goto("/admin");
+  await expect(page.getByRole("heading", { name: "User approvals" })).toBeVisible();
+  await expect(page.getByText("not-an-admin@example.com")).toBeVisible();
 });

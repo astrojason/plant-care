@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "deploy": "bash scripts/deploy.sh",
+    "set-user-role": "node --env-file=.env.local scripts/set-user-role.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

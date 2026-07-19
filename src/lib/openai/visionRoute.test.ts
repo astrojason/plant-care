@@ -37,7 +37,7 @@ beforeEach(() => {
   mockCheckTokenGate.mockReset();
   mockReportTokens.mockReset();
   mockParse.mockReset();
-  mockVerifyIdToken.mockResolvedValue({ uid: "user-1" });
+  mockVerifyIdToken.mockResolvedValue({ uid: "user-1", role: "USER" });
   mockCheckTokenGate.mockResolvedValue({ allowed: true });
 });
 
@@ -63,6 +63,16 @@ describe("handleVisionRequest", () => {
 
     expect(result.status).toBe(401);
     expect(JSON.stringify(result.body)).toMatch(/Firebase ID token has expired/);
+  });
+
+  it("returns 403 without calling OpenAI when the caller has no authorized role (PENDING)", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-1" });
+
+    const result = await handleVisionRequest(makeRequest({ photoUrl: "https://x/y.jpg" }), config);
+
+    expect(result.status).toBe(403);
+    expect(JSON.stringify(result.body)).toMatch(/pending admin approval/);
+    expect(mockCheckTokenGate).not.toHaveBeenCalled();
   });
 
   it("returns 400 when photoUrl is missing", async () => {

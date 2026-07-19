@@ -1,7 +1,7 @@
 import "server-only";
 import type { ZodType } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
-import { verifyIdToken } from "@/lib/firebase/admin";
+import { requireAuthorized } from "@/lib/auth/requireRole";
 import { checkTokenGate, reportTokens, DAILY_TOKEN_LIMIT } from "@/lib/tokenTracker";
 import { getOpenAIClient, VISION_MODEL } from "./client";
 
@@ -23,28 +23,19 @@ function errMessage(err: unknown): string {
 
 /**
  * Shared logic behind /api/identify and /api/diagnose: verify the caller's
- * Firebase ID token, gate on the shared daily token budget, call OpenAI with
- * a structured-output schema, and report tokens used. Every failure path
- * returns the full underlying error message — nothing here fails silently,
- * per the app's error-surfacing convention (rendered via ErrorBlock client-side).
+ * Firebase ID token and role (PENDING accounts are rejected), gate on the
+ * shared daily token budget, call OpenAI with a structured-output schema,
+ * and report tokens used. Every failure path returns the full underlying
+ * error message — nothing here fails silently, per the app's error-surfacing
+ * convention (rendered via ErrorBlock client-side).
  */
 export async function handleVisionRequest<T>(
   request: Request,
   config: VisionRequestConfig<T>
 ): Promise<VisionRouteResult> {
-  const authHeader = request.headers.get("authorization") ?? request.headers.get("Authorization");
-  const idToken = authHeader?.replace(/^Bearer\s+/i, "").trim();
-  if (!idToken) {
-    return { status: 401, body: { error: { message: "Missing Authorization bearer token." } } };
-  }
-
-  try {
-    await verifyIdToken(idToken);
-  } catch (err) {
-    return {
-      status: 401,
-      body: { error: { message: `Invalid or expired auth token: ${errMessage(err)}` } },
-    };
+  const authResult = await requireAuthorized(request);
+  if ("status" in authResult) {
+    return authResult;
   }
 
   let payload: { photoUrl?: unknown; confirmNearLimit?: unknown };
