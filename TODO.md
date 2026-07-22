@@ -1,6 +1,6 @@
-# TODO
+## Setup / follow-up (manual — needs Jason)
 
-## Set up a real Firebase project
+### Set up a real Firebase project
 
 `.firebaserc` currently only points at `demo-plant-care`, the fake project ID used by the
 local emulators for tests — there's no real backend behind this app yet.
@@ -18,7 +18,7 @@ local emulators for tests — there's no real backend behind this app yet.
       `NEXT_PUBLIC_FIREBASE_*` web config, `FIREBASE_SERVICE_ACCOUNT_KEY`, and `OPENAI_API_KEY`
 - [ ] Add the same env vars to the Vercel project so the production deploy has them
 
-## Deploy to Vercel
+### Deploy to Vercel
 
 The Vercel CLI is already authenticated as `astrojason`, but no project is linked yet.
 
@@ -30,7 +30,7 @@ The Vercel CLI is already authenticated as `astrojason`, but no project is linke
 - [ ] Re-run `npm run deploy` after adding env vars so the build picks them up
 - [ ] Open the deployed URL and confirm the login page loads
 
-## Ship the role-approval feature (commit `4b34731`)
+### Ship the role-approval feature (commit `4b34731`)
 
 - [ ] Deploy the updated Firestore/Storage rules to the live Firebase project:
       `firebase deploy --only firestore:rules,storage:rules`
@@ -39,3 +39,9 @@ The Vercel CLI is already authenticated as `astrojason`, but no project is linke
 - [ ] Sign in on the deployed app and confirm you land on `/dashboard`, not the
       "Waiting for approval" screen
 - [ ] Visit `/admin` and confirm the user list loads and you can approve a second test account
+
+## Bugs
+
+## Features
+
+## Enhancements
