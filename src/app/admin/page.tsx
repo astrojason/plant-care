@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { AuthGuard } from "@/components/AuthGuard";
 import { ErrorBlock } from "@/components/ErrorBlock";
+import { parseJsonResponse } from "@/lib/api/parseJsonResponse";
 import type { Role } from "@/lib/firebase/roles";
 
 interface AdminUser {
@@ -28,7 +29,7 @@ function AdminContent() {
       const res = await fetch("/api/admin/users", {
         headers: { Authorization: `Bearer ${idToken}` },
       });
-      const json = await res.json();
+      const json = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(json?.error?.message ?? `Request failed with status ${res.status}`);
       }
@@ -60,7 +61,7 @@ function AdminContent() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ uid: targetUid, role: newRole }),
       });
-      const json = await res.json();
+      const json = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(json?.error?.message ?? `Request failed with status ${res.status}`);
       }

@@ -56,7 +56,6 @@ export function PhotoUploader({
         id="photo-upload"
         type="file"
         accept="image/*"
-        capture="environment"
         disabled={uploading}
         onChange={handleFileChange}
         className="block w-full text-sm text-gray-700 dark:text-gray-300"

@@ -18,6 +18,7 @@ import { deleteCareEvent, logCareEvent } from "@/lib/care/log";
 import { deletePlant, updateCareSchedule, updatePlantSpecies } from "@/lib/firestore/plants";
 import { addPlantPhoto } from "@/lib/firestore/photos";
 import { createDiagnosis } from "@/lib/firestore/diagnoses";
+import { parseJsonResponse } from "@/lib/api/parseJsonResponse";
 import { mapCareEventDoc, mapDiagnosisDoc, mapPlantDoc } from "@/lib/firestore/mappers";
 import type { CareEvent, Diagnosis, Plant } from "@/lib/types/plant";
 import type { DiagnosisResult } from "@/lib/openai/schemas";
@@ -184,7 +185,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ photoUrl, plantId, confirmNearLimit }),
       });
-      const json = await res.json();
+      const json = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(json?.error?.message ?? `Request failed with status ${res.status}`);
       }

@@ -13,6 +13,7 @@ import { ErrorBlock } from "@/components/ErrorBlock";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { createPlant } from "@/lib/firestore/plants";
 import { addPlantPhoto } from "@/lib/firestore/photos";
+import { parseJsonResponse } from "@/lib/api/parseJsonResponse";
 import type { IdentificationResult } from "@/lib/openai/schemas";
 
 interface NearLimitState {
@@ -44,7 +45,7 @@ function AddPlantContent() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ photoUrl, confirmNearLimit }),
       });
-      const json = await res.json();
+      const json = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(json?.error?.message ?? `Request failed with status ${res.status}`);
       }
