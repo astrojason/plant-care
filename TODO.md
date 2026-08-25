@@ -33,7 +33,7 @@ The Vercel CLI is already authenticated as `astrojason`, but no project is linke
 ### Ship the role-approval feature (commit `4b34731`)
 
 - [ ] Deploy the updated Firestore/Storage rules to the live Firebase project:
-      `firebase deploy --only firestore:rules,storage:rules`
+      `firebase deploy --only firestore:rules,storage`
 - [ ] Seed your account as SUPERADMIN (requires `FIREBASE_SERVICE_ACCOUNT_KEY` in `.env.local`):
       `npm run set-user-role -- jason@astrojason.com SUPERADMIN`
 - [ ] Sign in on the deployed app and confirm you land on `/dashboard`, not the

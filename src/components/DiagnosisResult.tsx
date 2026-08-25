@@ -15,16 +15,16 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
         {`Urgency: ${result.urgency}`}
       </span>
 
-      <p className="text-sm text-gray-700">{result.overall_assessment}</p>
+      <p className="text-sm text-gray-700 dark:text-gray-300">{result.overall_assessment}</p>
 
       {result.detected_issues.length > 0 && (
         <ul className="space-y-2">
           {result.detected_issues.map((issue, i) => (
             <li key={i} className="rounded-md border border-gray-200 p-3">
-              <p className="font-medium text-gray-900">
+              <p className="font-medium text-gray-900 dark:text-gray-100">
                 {`${issue.issue} (${Math.round(issue.confidence * 100)}% confidence)`}
               </p>
-              <ul className="mt-1 list-disc pl-5 text-sm text-gray-600">
+              <ul className="mt-1 list-disc pl-5 text-sm text-gray-600 dark:text-gray-400">
                 {issue.symptoms_observed.map((symptom, j) => (
                   <li key={j}>{symptom}</li>
                 ))}
@@ -35,11 +35,11 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
       )}
 
       <div>
-        <h4 className="font-medium text-gray-900">Suggested treatment</h4>
-        <p className="text-sm text-gray-700">{result.suggested_treatment}</p>
+        <h4 className="font-medium text-gray-900 dark:text-gray-100">Suggested treatment</h4>
+        <p className="text-sm text-gray-700 dark:text-gray-300">{result.suggested_treatment}</p>
       </div>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-500 dark:text-gray-400">
         This is an AI-generated estimate, not a substitute for professional plant diagnosis —
         especially for high-value or valuable plants.
       </p>

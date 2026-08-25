@@ -98,18 +98,18 @@ function AddPlantContent() {
 
   return (
     <div className="mx-auto max-w-lg p-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Add a plant</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Add a plant</h1>
       <div className="mt-6 space-y-6">
         <PhotoUploader
           pathPrefix={`users/${user?.uid}/plants/temp-${tempId}`}
           onUploaded={handlePhotoUploaded}
         />
-        {identifying && <p className="text-sm text-gray-500">Identifying…</p>}
+        {identifying && <p className="text-sm text-gray-500 dark:text-gray-400">Identifying…</p>}
         {error !== null && <ErrorBlock error={error} title="Something went wrong" />}
         {identification && (
           <IdentificationResultView result={identification} onConfirm={handleSave} />
         )}
-        {saving && <p className="text-sm text-gray-500">Saving…</p>}
+        {saving && <p className="text-sm text-gray-500 dark:text-gray-400">Saving…</p>}
       </div>
       <ConfirmDialog
         open={pendingConfirmation !== null}

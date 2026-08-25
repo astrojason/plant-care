@@ -37,7 +37,7 @@ function DashboardContent() {
   return (
     <div className="mx-auto max-w-4xl p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Your plants</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Your plants</h1>
         <Link
           href="/plants/new"
           className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
@@ -53,11 +53,11 @@ function DashboardContent() {
       )}
 
       {error === null && plants === null && (
-        <p className="mt-6 text-sm text-gray-500">Loading…</p>
+        <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">Loading…</p>
       )}
 
       {error === null && plants !== null && plants.length === 0 && (
-        <p className="mt-6 text-sm text-gray-500">No plants yet. Add your first one!</p>
+        <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">No plants yet. Add your first one!</p>
       )}
 
       {error === null && plants !== null && plants.length > 0 && (

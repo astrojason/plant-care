@@ -26,7 +26,7 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Plant Care</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Plant Care</h1>
       <button
         type="button"
         onClick={handleSignIn}

@@ -49,7 +49,7 @@ export function PhotoUploader({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700" htmlFor="photo-upload">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="photo-upload">
         Photo
       </label>
       <input
@@ -59,9 +59,9 @@ export function PhotoUploader({
         capture="environment"
         disabled={uploading}
         onChange={handleFileChange}
-        className="block w-full text-sm text-gray-700"
+        className="block w-full text-sm text-gray-700 dark:text-gray-300"
       />
-      {uploading && <p className="text-sm text-gray-500">Uploading…</p>}
+      {uploading && <p className="text-sm text-gray-500 dark:text-gray-400">Uploading…</p>}
       {error !== null && <ErrorBlock error={error} title="Photo upload failed" />}
     </div>
   );

@@ -15,9 +15,9 @@ export function PlantCard({ plant, now = new Date() }: { plant: Plant; now?: Dat
         alt={plant.nickname}
         className="h-40 w-full rounded-md object-cover"
       />
-      <h3 className="mt-3 font-semibold text-gray-900">{plant.nickname}</h3>
+      <h3 className="mt-3 font-semibold text-gray-900 dark:text-gray-100">{plant.nickname}</h3>
       {plant.speciesCommonName && (
-        <p className="text-sm text-gray-500">{plant.speciesCommonName}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{plant.speciesCommonName}</p>
       )}
       <div className="mt-2 flex flex-wrap gap-2">
         <CareStatusBadge

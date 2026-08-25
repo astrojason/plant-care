@@ -35,7 +35,7 @@ export function CareEventHistory({
   }
 
   if (events.length === 0) {
-    return <p className="text-sm text-gray-500">No care events logged yet.</p>;
+    return <p className="text-sm text-gray-500 dark:text-gray-400">No care events logged yet.</p>;
   }
 
   return (
@@ -44,13 +44,13 @@ export function CareEventHistory({
         {events.map((event) => (
           <li key={event.id} className="flex items-center justify-between py-2">
             <div>
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                 {EVENT_LABELS[event.eventType]}
               </span>
-              <span className="ml-2 text-xs text-gray-500">
+              <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                 {event.occurredAt.toLocaleString()}
               </span>
-              {event.notes && <p className="text-xs text-gray-500">{event.notes}</p>}
+              {event.notes && <p className="text-xs text-gray-500 dark:text-gray-400">{event.notes}</p>}
             </div>
             <button
               type="button"

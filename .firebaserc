@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "demo-plant-care"
-  }
+    "default": "demo-plant-care",
+    "plant-care": "plant-care-f70b0"
+  },
+  "targets": {},
+  "etags": {}
 }

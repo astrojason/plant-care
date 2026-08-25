@@ -57,7 +57,7 @@ export function IdentificationResultView({
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="id-nickname">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="id-nickname">
           Nickname
         </label>
         <input
@@ -69,7 +69,7 @@ export function IdentificationResultView({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="id-common-name">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="id-common-name">
           Common name
         </label>
         <input
@@ -81,7 +81,7 @@ export function IdentificationResultView({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="id-scientific-name">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="id-scientific-name">
           Scientific name
         </label>
         <input
@@ -94,7 +94,7 @@ export function IdentificationResultView({
 
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700" htmlFor="id-watering">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="id-watering">
             Water (days)
           </label>
           <input
@@ -106,7 +106,7 @@ export function IdentificationResultView({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700" htmlFor="id-fertilizing">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="id-fertilizing">
             Fertilize (days)
           </label>
           <input
@@ -118,7 +118,7 @@ export function IdentificationResultView({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700" htmlFor="id-misting">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="id-misting">
             Mist (days)
           </label>
           <input

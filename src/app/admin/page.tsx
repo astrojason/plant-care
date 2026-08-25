@@ -85,7 +85,7 @@ function AdminContent() {
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-semibold text-gray-900">User approvals</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">User approvals</h1>
 
       {error !== null && (
         <div className="mt-6">
@@ -93,12 +93,12 @@ function AdminContent() {
         </div>
       )}
 
-      {error === null && users === null && <p className="mt-6 text-sm text-gray-500">Loading…</p>}
+      {error === null && users === null && <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">Loading…</p>}
 
       {users !== null && (
         <table className="mt-6 w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
+            <tr className="border-b border-gray-200 text-left text-gray-500 dark:text-gray-400">
               <th className="py-2">Email</th>
               <th className="py-2">Role</th>
               <th className="py-2" />

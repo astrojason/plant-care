@@ -229,7 +229,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
   }
 
   if (plant === null) {
-    return <p className="p-6 text-sm text-gray-500">Loading…</p>;
+    return <p className="p-6 text-sm text-gray-500 dark:text-gray-400">Loading…</p>;
   }
 
   return (
@@ -243,9 +243,9 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
         />
         <div className="mt-4 flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">{plant.nickname}</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{plant.nickname}</h1>
             {plant.speciesCommonName && (
-              <p className="text-sm text-gray-500">{plant.speciesCommonName}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{plant.speciesCommonName}</p>
             )}
           </div>
           <button
@@ -273,14 +273,14 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
       </div>
 
       <section>
-        <h2 className="font-medium text-gray-900">Log care</h2>
+        <h2 className="font-medium text-gray-900 dark:text-gray-100">Log care</h2>
         <div className="mt-2">
           <CareEventButtons onLog={handleLog} />
         </div>
       </section>
 
       <section>
-        <h2 className="font-medium text-gray-900">Care history</h2>
+        <h2 className="font-medium text-gray-900 dark:text-gray-100">Care history</h2>
         <div className="mt-2">
           <CareEventHistory events={careEvents} onDelete={handleDeleteEvent} />
         </div>
@@ -288,7 +288,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
 
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="font-medium text-gray-900">Species</h2>
+          <h2 className="font-medium text-gray-900 dark:text-gray-100">Species</h2>
           {!editingSpecies && (
             <button
               type="button"
@@ -338,14 +338,14 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
               <button
                 type="button"
                 onClick={() => setEditingSpecies(false)}
-                className="rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                className="rounded-md px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100"
               >
                 Cancel
               </button>
             </div>
           </div>
         ) : (
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             {plant.speciesScientificName || "Not set"}
             {plant.location ? ` · ${plant.location}` : ""}
           </p>
@@ -354,7 +354,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
 
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="font-medium text-gray-900">Care schedule</h2>
+          <h2 className="font-medium text-gray-900 dark:text-gray-100">Care schedule</h2>
           {!editingSchedule && (
             <button
               type="button"
@@ -405,14 +405,14 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
               <button
                 type="button"
                 onClick={() => setEditingSchedule(false)}
-                className="rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                className="rounded-md px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100"
               >
                 Cancel
               </button>
             </div>
           </div>
         ) : (
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             Water every {plant.wateringIntervalDays ?? "—"} days · Fertilize every{" "}
             {plant.fertilizingIntervalDays ?? "—"} days · Mist every{" "}
             {plant.mistingIntervalDays ?? "—"} days
@@ -421,23 +421,23 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
       </section>
 
       <section>
-        <h2 className="font-medium text-gray-900">Diagnose an issue</h2>
+        <h2 className="font-medium text-gray-900 dark:text-gray-100">Diagnose an issue</h2>
         <div className="mt-2 space-y-4">
           <PhotoUploader
             pathPrefix={`users/${user?.uid}/plants/${plantId}`}
             onUploaded={handleDiagnosePhotoUploaded}
           />
-          {diagnosing && <p className="text-sm text-gray-500">Diagnosing…</p>}
+          {diagnosing && <p className="text-sm text-gray-500 dark:text-gray-400">Diagnosing…</p>}
           {diagnosisResult && <DiagnosisResultView result={diagnosisResult} />}
         </div>
       </section>
 
       {diagnoses.length > 0 && (
         <section>
-          <h2 className="font-medium text-gray-900">Diagnosis history</h2>
+          <h2 className="font-medium text-gray-900 dark:text-gray-100">Diagnosis history</h2>
           <ul className="mt-2 space-y-2">
             {diagnoses.map((d) => (
-              <li key={d.id} className="rounded-md border border-gray-200 p-3 text-sm text-gray-700">
+              <li key={d.id} className="rounded-md border border-gray-200 p-3 text-sm text-gray-700 dark:text-gray-300">
                 {d.createdAt.toLocaleDateString()} — {d.suggestedTreatment}
               </li>
             ))}

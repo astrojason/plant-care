@@ -22,7 +22,7 @@ These steps can't be automated — they require your own Firebase and OpenAI acc
    npm install -g firebase-tools   # if not already installed
    firebase login
    firebase use --add               # link this directory to your Firebase project
-   firebase deploy --only firestore:rules,storage:rules
+   firebase deploy --only firestore:rules,storage
    ```
 5. **Get an OpenAI API key** at [platform.openai.com](https://platform.openai.com) and set `OPENAI_API_KEY` in `.env.local`.
 6. **On Vercel**: set every var from `.env.local.example` in the project's Environment Variables settings before deploying.

@@ -34,7 +34,7 @@ export default function RootLayout({
         <AuthProvider>{children}</AuthProvider>
         <footer className="mt-auto border-t border-gray-200 py-4">
           <div className="mx-auto max-w-4xl px-6 flex justify-end">
-            <Link href="/changelog" className="text-xs text-gray-400 hover:text-gray-600 transition-colors font-mono">
+            <Link href="/changelog" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors font-mono">
               v{pkg.version}
             </Link>
           </div>
