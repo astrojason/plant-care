@@ -6,7 +6,6 @@ export interface ConfirmDialogProps {
   description?: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  destructive?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -22,45 +21,29 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
-  destructive = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onCancel}
-    >
+    <div className="dialog-backdrop" onClick={onCancel}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
-        className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+        className="dialog"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-gray-900">
+        <h2 id="confirm-dialog-title" className="dialog-title">
           {title}
         </h2>
-        {description && <p className="mt-2 text-sm text-gray-600">{description}</p>}
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-          >
+        {description && <p className="dialog-body">{description}</p>}
+        <div className="dialog-actions">
+          <button type="button" onClick={onCancel} className="btn btn-secondary">
             {cancelLabel}
           </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={
-              destructive
-                ? "rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-                : "rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
-            }
-          >
+          <button type="button" onClick={onConfirm} className="btn btn-primary">
             {confirmLabel}
           </button>
         </div>

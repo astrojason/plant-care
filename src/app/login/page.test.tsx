@@ -28,7 +28,7 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     render(<LoginPage />);
 
-    await user.click(screen.getByRole("button", { name: /sign in with google/i }));
+    await user.click(screen.getByRole("button", { name: /continue with google/i }));
 
     expect(mockReplace).toHaveBeenCalledWith("/dashboard");
   });
@@ -38,7 +38,7 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     render(<LoginPage />);
 
-    await user.click(screen.getByRole("button", { name: /sign in with google/i }));
+    await user.click(screen.getByRole("button", { name: /continue with google/i }));
 
     expect(await screen.findByText("popup closed by user")).toBeInTheDocument();
     expect(mockReplace).not.toHaveBeenCalled();

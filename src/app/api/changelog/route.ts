@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import path from 'path';
@@ -6,8 +6,11 @@ import path from 'path';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const log = execSync(
-    'git log --pretty=format:%h|%s|%ad --date=short -n 50',
+  // execFileSync (no shell) so the `|` separators in --pretty=format aren't
+  // parsed as shell pipes.
+  const log = execFileSync(
+    'git',
+    ['log', '--pretty=format:%h|%s|%ad', '--date=short', '-n', '50'],
     { cwd: process.cwd() }
   ).toString().trim();
 

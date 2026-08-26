@@ -12,9 +12,12 @@ vi.mock("@/components/AuthProvider", () => ({
 }));
 
 const mockReplace = vi.fn();
+const mockBack = vi.fn();
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "plant-1" }),
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace, back: mockBack }),
+  usePathname: () => "/plants/plant-1",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 type SnapshotCallback = (snapshot: unknown) => void;
@@ -31,6 +34,12 @@ vi.mock("firebase/firestore", () => ({
     subscriptions.push({ onNext, onError });
     return mockUnsubscribe;
   },
+}));
+
+vi.mock("firebase/storage", () => ({
+  ref: vi.fn(() => ({ __ref: true })),
+  uploadBytes: vi.fn(),
+  getDownloadURL: vi.fn(),
 }));
 
 const mockLogCareEvent = vi.fn();
@@ -115,6 +124,7 @@ function renderAndLoadPlant() {
     subscriptions[0]?.onNext(plantSnapshot());
     subscriptions[1]?.onNext({ docs: [] });
     subscriptions[2]?.onNext({ docs: [] });
+    subscriptions[3]?.onNext({ docs: [] });
   });
 }
 
@@ -130,6 +140,7 @@ beforeEach(() => {
   mockCreateDiagnosis.mockReset();
   mockFetch.mockReset();
   mockReplace.mockReset();
+  mockBack.mockReset();
   mockGetIdToken.mockClear();
 });
 
@@ -138,7 +149,7 @@ describe("PlantDetailPage", () => {
     renderAndLoadPlant();
 
     expect(screen.getByText("Fig Newton")).toBeInTheDocument();
-    expect(screen.getByText("Fiddle Leaf Fig")).toBeInTheDocument();
+    expect(screen.getByText(/Fiddle Leaf Fig/)).toBeInTheDocument();
   });
 
   it("logs a care event when a quick-log button is clicked", async () => {
@@ -166,6 +177,7 @@ describe("PlantDetailPage", () => {
         ],
       });
       subscriptions[2]?.onNext({ docs: [] });
+      subscriptions[3]?.onNext({ docs: [] });
     });
 
     await user.click(screen.getByRole("button", { name: /delete watered event/i }));
@@ -174,24 +186,26 @@ describe("PlantDetailPage", () => {
     expect(mockDeleteCareEvent).toHaveBeenCalledWith("user-1", "plant-1", "event-1", "watered");
   });
 
-  it("deletes the plant and redirects to the dashboard after confirming", async () => {
+  it("deletes the plant and redirects to the dashboard after confirming, via the overflow menu", async () => {
     mockDeletePlant.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderAndLoadPlant();
 
-    await user.click(screen.getByRole("button", { name: /delete plant/i }));
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("button", { name: "Delete plant" }));
     await user.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(mockDeletePlant).toHaveBeenCalledWith("user-1", "plant-1");
     expect(mockReplace).toHaveBeenCalledWith("/dashboard");
   });
 
-  it("saves edited species fields", async () => {
+  it("saves edited species fields from the overflow menu's sheet", async () => {
     mockUpdatePlantSpecies.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderAndLoadPlant();
 
-    await user.click(screen.getByRole("button", { name: /edit species/i }));
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("button", { name: "Edit species" }));
     const nicknameInput = screen.getByLabelText("Nickname");
     await user.clear(nicknameInput);
     await user.type(nicknameInput, "Big Fig");
@@ -204,15 +218,17 @@ describe("PlantDetailPage", () => {
     );
   });
 
-  it("saves edited care schedule intervals", async () => {
+  it("saves edited care schedule intervals via the stepper", async () => {
     mockUpdateCareSchedule.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderAndLoadPlant();
 
-    await user.click(screen.getByRole("button", { name: /edit schedule/i }));
-    const wateringInput = screen.getByLabelText("Watering interval (days)");
-    await user.clear(wateringInput);
-    await user.type(wateringInput, "10");
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    const increaseWater = screen.getByRole("button", { name: "Increase Water" });
+    await user.click(increaseWater);
+    await user.click(increaseWater);
+    await user.click(increaseWater);
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mockUpdateCareSchedule).toHaveBeenCalledWith(
@@ -222,16 +238,21 @@ describe("PlantDetailPage", () => {
     );
   });
 
-  it("runs a diagnosis, shows the result, and persists it", async () => {
+  it("runs a diagnosis from the footer CTA, shows the result, and saves it on request", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ result: DIAGNOSIS_RESULT }) });
     mockAddPlantPhoto.mockResolvedValue("photo-1");
     mockCreateDiagnosis.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderAndLoadPlant();
 
+    await user.click(screen.getByRole("button", { name: "Something looks wrong" }));
     await user.click(screen.getByRole("button", { name: "Fake diagnose upload" }));
 
     expect(await screen.findByText("Looks a bit thirsty.")).toBeInTheDocument();
+    expect(mockAddPlantPhoto).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Save to plant" }));
+
     expect(mockAddPlantPhoto).toHaveBeenCalledWith(
       "user-1",
       "plant-1",
@@ -252,9 +273,10 @@ describe("PlantDetailPage", () => {
     const user = userEvent.setup();
     renderAndLoadPlant();
 
+    await user.click(screen.getByRole("button", { name: "Something looks wrong" }));
     await user.click(screen.getByRole("button", { name: "Fake diagnose upload" }));
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByText(/near today's ai budget/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /proceed/i }));
 
     expect(mockFetch).toHaveBeenLastCalledWith(

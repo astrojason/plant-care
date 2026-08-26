@@ -36,8 +36,15 @@ vi.mock("@/lib/firestore/photos", () => ({
 }));
 
 const mockReplace = vi.fn();
+const mockBack = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace, back: mockBack }),
+  usePathname: () => "/plants/new",
+}));
+
+vi.mock("firebase/firestore", () => ({
+  collection: vi.fn(() => ({ __collection: true })),
+  onSnapshot: vi.fn(() => vi.fn()),
 }));
 
 const mockFetch = vi.fn();

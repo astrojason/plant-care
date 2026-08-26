@@ -1,27 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { collection, doc, onSnapshot, orderBy, query } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { ArrowLeft, DotsThree } from "@phosphor-icons/react";
+import { db, storage } from "@/lib/firebase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { AuthGuard } from "@/components/AuthGuard";
+import { AppShell } from "@/components/AppShell";
 import { CareEventButtons } from "@/components/CareEventButtons";
-import { CareEventHistory } from "@/components/CareEventHistory";
-import { CareStatusBadge } from "@/components/CareStatusBadge";
+import { CadenceRows } from "@/components/CadenceRows";
+import { GrowthTimeline } from "@/components/GrowthTimeline";
+import { HistoryList, type HistoryEntry } from "@/components/HistoryList";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ErrorBlock } from "@/components/ErrorBlock";
-import { PhotoUploader, type UploadedPhoto } from "@/components/PhotoUploader";
-import { DiagnosisResultView } from "@/components/DiagnosisResult";
-import { getCareStatus } from "@/lib/care/schedule";
+import { DiagnosisSheet } from "@/components/DiagnosisSheet";
+import { EditSpeciesSheet, type SpeciesFormValues } from "@/components/EditSpeciesSheet";
+import { EditScheduleSheet, type ScheduleFormValues } from "@/components/EditScheduleSheet";
+import type { UploadedPhoto } from "@/components/PhotoUploader";
+import { getMostUrgentTask } from "@/lib/care/schedule";
 import { deleteCareEvent, logCareEvent } from "@/lib/care/log";
 import { deletePlant, updateCareSchedule, updatePlantSpecies } from "@/lib/firestore/plants";
 import { addPlantPhoto } from "@/lib/firestore/photos";
 import { createDiagnosis } from "@/lib/firestore/diagnoses";
+import { prepareImageForUpload } from "@/lib/media/imageProcessing";
 import { parseJsonResponse } from "@/lib/api/parseJsonResponse";
-import { mapCareEventDoc, mapDiagnosisDoc, mapPlantDoc } from "@/lib/firestore/mappers";
-import type { CareEvent, Diagnosis, Plant } from "@/lib/types/plant";
+import { mapCareEventDoc, mapDiagnosisDoc, mapPlantDoc, mapPlantPhotoDoc } from "@/lib/firestore/mappers";
+import type { CareEvent, CareEventType, Diagnosis, Plant, PlantPhoto } from "@/lib/types/plant";
 import type { DiagnosisResult } from "@/lib/openai/schemas";
+
+const CARE_EVENT_LABELS: Record<CareEventType, string> = {
+  watered: "Watered",
+  fertilized: "Fertilized",
+  misted: "Misted",
+  other: "Other",
+};
 
 interface NearLimitState {
   tokensUsed: number;
@@ -30,59 +44,36 @@ interface NearLimitState {
   photoPath: string;
 }
 
+type Sheet = "none" | "diagnosis" | "species" | "schedule";
+
 function PlantDetailContent({ plantId }: { plantId: string }) {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [plant, setPlant] = useState<Plant | null>(null);
   const [careEvents, setCareEvents] = useState<CareEvent[]>([]);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
+  const [photos, setPhotos] = useState<PlantPhoto[]>([]);
   const [error, setError] = useState<unknown>(null);
 
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const [sheet, setSheet] = useState<Sheet>("none");
   const [confirmDeletePlant, setConfirmDeletePlant] = useState(false);
 
-  const [editingSpecies, setEditingSpecies] = useState(false);
-  const [speciesForm, setSpeciesForm] = useState({
-    nickname: "",
-    speciesCommonName: "",
-    speciesScientificName: "",
-    location: "",
-  });
-
-  const [editingSchedule, setEditingSchedule] = useState(false);
-  const [scheduleForm, setScheduleForm] = useState({
-    wateringIntervalDays: "",
-    fertilizingIntervalDays: "",
-    mistingIntervalDays: "",
-  });
-
+  const [diagnosePhoto, setDiagnosePhoto] = useState<{ url: string; path: string } | null>(null);
   const [diagnosing, setDiagnosing] = useState(false);
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
+  const [diagnosisSaving, setDiagnosisSaving] = useState(false);
+  const [diagnosisSaved, setDiagnosisSaved] = useState(false);
+  const [diagnosisError, setDiagnosisError] = useState<unknown>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<NearLimitState | null>(null);
 
   useEffect(() => {
     if (!user) return;
     const unsubscribe = onSnapshot(
       doc(db, "users", user.uid, "plants", plantId),
-      (snap) => {
-        if (!snap.exists()) {
-          setPlant(null);
-          return;
-        }
-        const mapped = mapPlantDoc(snap.id, snap.data());
-        setPlant(mapped);
-        setSpeciesForm({
-          nickname: mapped.nickname,
-          speciesCommonName: mapped.speciesCommonName ?? "",
-          speciesScientificName: mapped.speciesScientificName ?? "",
-          location: mapped.location ?? "",
-        });
-        setScheduleForm({
-          wateringIntervalDays: mapped.wateringIntervalDays?.toString() ?? "",
-          fertilizingIntervalDays: mapped.fertilizingIntervalDays?.toString() ?? "",
-          mistingIntervalDays: mapped.mistingIntervalDays?.toString() ?? "",
-        });
-      },
+      (snap) => setPlant(snap.exists() ? mapPlantDoc(snap.id, snap.data()) : null),
       (err) => setError(err)
     );
     return unsubscribe;
@@ -116,12 +107,50 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     return unsubscribe;
   }, [user, plantId]);
 
+  useEffect(() => {
+    if (searchParams.get("diagnose") === "1") {
+      openDiagnoseSheet();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once from the ?diagnose=1 entry link, not on every searchParams identity change
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const photosQuery = query(
+      collection(db, "users", user.uid, "plants", plantId, "photos"),
+      orderBy("createdAt", "asc")
+    );
+    const unsubscribe = onSnapshot(
+      photosQuery,
+      (snap) => setPhotos(snap.docs.map((d) => mapPlantPhotoDoc(d.id, d.data()))),
+      (err) => setError(err)
+    );
+    return unsubscribe;
+  }, [user, plantId]);
+
+  const historyEntries: HistoryEntry[] = useMemo(() => {
+    const careEntries: HistoryEntry[] = careEvents.map((e) => ({
+      id: e.id,
+      kind: "care",
+      careEventType: e.eventType,
+      label: CARE_EVENT_LABELS[e.eventType],
+      date: e.occurredAt,
+    }));
+    const diagnosisEntries: HistoryEntry[] = diagnoses.map((d) => ({
+      id: d.id,
+      kind: "diagnosis",
+      label: "Diagnosis",
+      date: d.createdAt,
+    }));
+    return [...careEntries, ...diagnosisEntries].sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [careEvents, diagnoses]);
+
   async function handleLog(eventType: "watered" | "fertilized" | "misted") {
     if (!user) return;
     await logCareEvent(user.uid, plantId, eventType);
   }
 
-  async function handleDeleteEvent(eventId: string) {
+  async function handleDeleteCareEvent(eventId: string) {
     if (!user) return;
     const event = careEvents.find((e) => e.id === eventId);
     if (!event) return;
@@ -139,44 +168,53 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     }
   }
 
-  async function handleSaveSpecies() {
+  async function handleSaveSpecies(values: SpeciesFormValues) {
     if (!user) return;
     try {
       await updatePlantSpecies(user.uid, plantId, {
-        nickname: speciesForm.nickname,
-        speciesCommonName: speciesForm.speciesCommonName || null,
-        speciesScientificName: speciesForm.speciesScientificName || null,
-        location: speciesForm.location || null,
+        nickname: values.nickname,
+        speciesCommonName: values.speciesCommonName || null,
+        speciesScientificName: values.speciesScientificName || null,
+        location: values.location || null,
       });
-      setEditingSpecies(false);
+      setSheet("none");
     } catch (err) {
       setError(err);
     }
   }
 
-  async function handleSaveSchedule() {
+  async function handleSaveSchedule(values: ScheduleFormValues) {
     if (!user) return;
     try {
-      await updateCareSchedule(user.uid, plantId, {
-        wateringIntervalDays: scheduleForm.wateringIntervalDays
-          ? Number(scheduleForm.wateringIntervalDays)
-          : null,
-        fertilizingIntervalDays: scheduleForm.fertilizingIntervalDays
-          ? Number(scheduleForm.fertilizingIntervalDays)
-          : null,
-        mistingIntervalDays: scheduleForm.mistingIntervalDays
-          ? Number(scheduleForm.mistingIntervalDays)
-          : null,
-      });
-      setEditingSchedule(false);
+      await updateCareSchedule(user.uid, plantId, values);
+      setSheet("none");
     } catch (err) {
       setError(err);
     }
+  }
+
+  async function handleAddGrowthPhoto(file: File) {
+    if (!user) return;
+    const processed = await prepareImageForUpload(file);
+    const storagePath = `users/${user.uid}/plants/${plantId}/${crypto.randomUUID()}.jpg`;
+    const storageRef = ref(storage, storagePath);
+    await uploadBytes(storageRef, processed, { contentType: "image/jpeg" });
+    const downloadUrl = await getDownloadURL(storageRef);
+    await addPlantPhoto(user.uid, plantId, storagePath, downloadUrl, "general");
+  }
+
+  function openDiagnoseSheet() {
+    setDiagnosePhoto(null);
+    setDiagnosisResult(null);
+    setDiagnosisSaved(false);
+    setDiagnosisError(null);
+    setOverflowOpen(false);
+    setSheet("diagnosis");
   }
 
   async function runDiagnose(photoUrl: string, photoPath: string, confirmNearLimit = false) {
     if (!user) return;
-    setError(null);
+    setDiagnosisError(null);
     setDiagnosing(true);
     try {
       const idToken = await user.getIdToken();
@@ -198,19 +236,16 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
         });
         return;
       }
-      const result = json.result as DiagnosisResult;
-      setDiagnosisResult(result);
-      const photoId = await addPlantPhoto(user.uid, plantId, photoPath, photoUrl, "diagnosis");
-      await createDiagnosis(user.uid, plantId, photoId, result);
+      setDiagnosisResult(json.result as DiagnosisResult);
     } catch (err) {
-      setError(err);
+      setDiagnosisError(err);
     } finally {
       setDiagnosing(false);
     }
   }
 
   async function handleDiagnosePhotoUploaded(uploaded: UploadedPhoto) {
-    setDiagnosisResult(null);
+    setDiagnosePhoto({ url: uploaded.downloadUrl, path: uploaded.storagePath });
     await runDiagnose(uploaded.downloadUrl, uploaded.storagePath);
   }
 
@@ -221,234 +256,196 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     await runDiagnose(photoUrl, photoPath, true);
   }
 
+  async function handleSaveDiagnosis() {
+    if (!user || !diagnosisResult || !diagnosePhoto) return;
+    setDiagnosisSaving(true);
+    setDiagnosisError(null);
+    try {
+      const photoId = await addPlantPhoto(user.uid, plantId, diagnosePhoto.path, diagnosePhoto.url, "diagnosis");
+      await createDiagnosis(user.uid, plantId, photoId, diagnosisResult);
+      setDiagnosisSaved(true);
+    } catch (err) {
+      setDiagnosisError(err);
+    } finally {
+      setDiagnosisSaving(false);
+    }
+  }
+
   if (error !== null) {
     return (
-      <div className="mx-auto max-w-2xl p-6">
+      <div className="p-5">
         <ErrorBlock error={error} title="Something went wrong" />
       </div>
     );
   }
 
   if (plant === null) {
-    return <p className="p-6 text-sm text-gray-500 dark:text-gray-400">Loading…</p>;
+    return (
+      <div className="flex flex-col gap-[var(--space-3)] p-5">
+        <div className="skeleton-row" style={{ height: 300 }} />
+        <div className="skeleton-row" style={{ height: 68 }} />
+        <div className="skeleton-row" style={{ height: 68 }} />
+      </div>
+    );
+  }
+
+  const urgent = getMostUrgentTask(plant);
+  let statusText: string | null = null;
+  if (urgent) {
+    if (urgent.daysPastDue >= 1) {
+      const days = Math.floor(urgent.daysPastDue);
+      statusText = `${urgent.label} overdue · ${days} day${days === 1 ? "" : "s"}`;
+    } else if (urgent.daysPastDue >= 0) {
+      statusText = `${urgent.label} overdue`;
+    } else if (urgent.daysPastDue > -1) {
+      statusText = `${urgent.label} due today`;
+    }
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 p-6">
-      <div>
-        {/* eslint-disable-next-line @next/next/no-img-element -- Firebase Storage download URLs */}
-        <img
-          src={plant.primaryPhotoUrl}
-          alt={plant.nickname}
-          className="h-56 w-full rounded-lg object-cover"
-        />
-        <div className="mt-4 flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{plant.nickname}</h1>
-            {plant.speciesCommonName && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">{plant.speciesCommonName}</p>
-            )}
-          </div>
+    <div className="flex flex-col">
+      <div className="hero-photo-wrap" style={{ height: 300 }}>
+        {plant.primaryPhotoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage download URL
+          <img src={plant.primaryPhotoUrl} alt="" className="lighten" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <div className="placeholder-tile" style={{ width: "100%", height: "100%" }} />
+        )}
+        <div className="hero-scrim" />
+
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => router.back()}
+          className="btn btn-icon hero-icon-btn"
+          style={{ position: "absolute", top: 16, left: 16 }}
+        >
+          <ArrowLeft size={16} />
+        </button>
+        <div style={{ position: "absolute", top: 16, right: 16 }}>
           <button
             type="button"
-            onClick={() => setConfirmDeletePlant(true)}
-            className="text-sm text-red-600 hover:underline"
+            aria-label="More actions"
+            onClick={() => setOverflowOpen((v) => !v)}
+            className="btn btn-icon hero-icon-btn"
           >
-            Delete plant
+            <DotsThree size={18} weight="bold" />
           </button>
+          {overflowOpen && (
+            <>
+              <div
+                onClick={() => setOverflowOpen(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 5 }}
+              />
+              <div className="overflow-menu card elev-md">
+                <button
+                  type="button"
+                  className="overflow-menu-item"
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    setSheet("species");
+                  }}
+                >
+                  Edit species
+                </button>
+                <button
+                  type="button"
+                  className="overflow-menu-item"
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    setSheet("schedule");
+                  }}
+                >
+                  Edit schedule
+                </button>
+                <button
+                  type="button"
+                  className="overflow-menu-item"
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    setConfirmDeletePlant(true);
+                  }}
+                >
+                  Delete plant
+                </button>
+              </div>
+            </>
+          )}
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <CareStatusBadge
-            label="Water"
-            status={getCareStatus(plant.lastWateredAt, plant.wateringIntervalDays)}
-          />
-          <CareStatusBadge
-            label="Fertilize"
-            status={getCareStatus(plant.lastFertilizedAt, plant.fertilizingIntervalDays)}
-          />
-          <CareStatusBadge
-            label="Mist"
-            status={getCareStatus(plant.lastMistedAt, plant.mistingIntervalDays)}
-          />
+
+        <div style={{ position: "absolute", left: 20, right: 20, bottom: 16 }}>
+          {statusText && (
+            <span className="tag tag-accent" style={{ marginBottom: 6, display: "inline-flex" }}>
+              {statusText}
+            </span>
+          )}
+          <h1 style={{ fontSize: 29, fontWeight: 500, margin: 0 }}>{plant.nickname}</h1>
+          <p className="text-secondary" style={{ fontSize: 13, margin: 0 }}>
+            {[plant.speciesCommonName, plant.location].filter(Boolean).join(" · ")}
+          </p>
         </div>
       </div>
 
-      <section>
-        <h2 className="font-medium text-gray-900 dark:text-gray-100">Log care</h2>
-        <div className="mt-2">
-          <CareEventButtons onLog={handleLog} />
-        </div>
-      </section>
+      <div className="flex flex-col gap-[var(--space-6)] p-5">
+        <CareEventButtons plant={plant} onLog={handleLog} />
 
-      <section>
-        <h2 className="font-medium text-gray-900 dark:text-gray-100">Care history</h2>
-        <div className="mt-2">
-          <CareEventHistory events={careEvents} onDelete={handleDeleteEvent} />
-        </div>
-      </section>
+        <CadenceRows plant={plant} />
 
-      <section>
-        <div className="flex items-center justify-between">
-          <h2 className="font-medium text-gray-900 dark:text-gray-100">Species</h2>
-          {!editingSpecies && (
-            <button
-              type="button"
-              onClick={() => setEditingSpecies(true)}
-              className="text-sm text-blue-700 hover:underline"
-            >
-              Edit species
-            </button>
-          )}
-        </div>
-        {editingSpecies ? (
-          <div className="mt-2 space-y-2">
-            <input
-              aria-label="Nickname"
-              value={speciesForm.nickname}
-              onChange={(e) => setSpeciesForm((f) => ({ ...f, nickname: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            />
-            <input
-              aria-label="Common name"
-              value={speciesForm.speciesCommonName}
-              onChange={(e) => setSpeciesForm((f) => ({ ...f, speciesCommonName: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            />
-            <input
-              aria-label="Scientific name"
-              value={speciesForm.speciesScientificName}
-              onChange={(e) =>
-                setSpeciesForm((f) => ({ ...f, speciesScientificName: e.target.value }))
-              }
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            />
-            <input
-              aria-label="Location"
-              value={speciesForm.location}
-              onChange={(e) => setSpeciesForm((f) => ({ ...f, location: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleSaveSpecies}
-                className="rounded-md bg-green-700 px-3 py-1.5 text-sm text-white hover:bg-green-800"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingSpecies(false)}
-                className="rounded-md px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {plant.speciesScientificName || "Not set"}
-            {plant.location ? ` · ${plant.location}` : ""}
-          </p>
-        )}
-      </section>
+        <GrowthTimeline photos={photos} onAddPhoto={handleAddGrowthPhoto} />
 
-      <section>
-        <div className="flex items-center justify-between">
-          <h2 className="font-medium text-gray-900 dark:text-gray-100">Care schedule</h2>
-          {!editingSchedule && (
-            <button
-              type="button"
-              onClick={() => setEditingSchedule(true)}
-              className="text-sm text-blue-700 hover:underline"
-            >
-              Edit schedule
-            </button>
-          )}
-        </div>
-        {editingSchedule ? (
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            <input
-              aria-label="Watering interval (days)"
-              type="number"
-              value={scheduleForm.wateringIntervalDays}
-              onChange={(e) =>
-                setScheduleForm((f) => ({ ...f, wateringIntervalDays: e.target.value }))
-              }
-              className="rounded-md border border-gray-300 px-3 py-2"
-            />
-            <input
-              aria-label="Fertilizing interval (days)"
-              type="number"
-              value={scheduleForm.fertilizingIntervalDays}
-              onChange={(e) =>
-                setScheduleForm((f) => ({ ...f, fertilizingIntervalDays: e.target.value }))
-              }
-              className="rounded-md border border-gray-300 px-3 py-2"
-            />
-            <input
-              aria-label="Misting interval (days)"
-              type="number"
-              value={scheduleForm.mistingIntervalDays}
-              onChange={(e) =>
-                setScheduleForm((f) => ({ ...f, mistingIntervalDays: e.target.value }))
-              }
-              className="rounded-md border border-gray-300 px-3 py-2"
-            />
-            <div className="col-span-3 flex gap-2">
-              <button
-                type="button"
-                onClick={handleSaveSchedule}
-                className="rounded-md bg-green-700 px-3 py-1.5 text-sm text-white hover:bg-green-800"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingSchedule(false)}
-                className="rounded-md px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Water every {plant.wateringIntervalDays ?? "—"} days · Fertilize every{" "}
-            {plant.fertilizingIntervalDays ?? "—"} days · Mist every{" "}
-            {plant.mistingIntervalDays ?? "—"} days
-          </p>
-        )}
-      </section>
-
-      <section>
-        <h2 className="font-medium text-gray-900 dark:text-gray-100">Diagnose an issue</h2>
-        <div className="mt-2 space-y-4">
-          <PhotoUploader
-            pathPrefix={`users/${user?.uid}/plants/${plantId}`}
-            onUploaded={handleDiagnosePhotoUploaded}
-          />
-          {diagnosing && <p className="text-sm text-gray-500 dark:text-gray-400">Diagnosing…</p>}
-          {diagnosisResult && <DiagnosisResultView result={diagnosisResult} />}
-        </div>
-      </section>
-
-      {diagnoses.length > 0 && (
         <section>
-          <h2 className="font-medium text-gray-900 dark:text-gray-100">Diagnosis history</h2>
-          <ul className="mt-2 space-y-2">
-            {diagnoses.map((d) => (
-              <li key={d.id} className="rounded-md border border-gray-200 p-3 text-sm text-gray-700 dark:text-gray-300">
-                {d.createdAt.toLocaleDateString()} — {d.suggestedTreatment}
-              </li>
-            ))}
-          </ul>
+          <h2 className="kicker mb-[var(--space-2)]">History</h2>
+          <HistoryList entries={historyEntries} onDeleteCareEvent={handleDeleteCareEvent} />
         </section>
+
+        <button type="button" onClick={openDiagnoseSheet} className="btn btn-primary btn-block" style={{ minHeight: 46 }}>
+          Something looks wrong
+        </button>
+      </div>
+
+      {sheet === "diagnosis" && (
+        <DiagnosisSheet
+          plantName={plant.nickname}
+          pathPrefix={`users/${user?.uid}/plants/${plantId}`}
+          photoUrl={diagnosePhoto?.url ?? null}
+          diagnosing={diagnosing}
+          result={diagnosisResult}
+          saving={diagnosisSaving}
+          saved={diagnosisSaved}
+          error={diagnosisError}
+          onPhotoUploaded={handleDiagnosePhotoUploaded}
+          onClose={() => setSheet("none")}
+          onSave={handleSaveDiagnosis}
+        />
+      )}
+
+      {sheet === "species" && (
+        <EditSpeciesSheet
+          initial={{
+            nickname: plant.nickname,
+            speciesCommonName: plant.speciesCommonName ?? "",
+            speciesScientificName: plant.speciesScientificName ?? "",
+            location: plant.location ?? "",
+          }}
+          onSave={handleSaveSpecies}
+          onCancel={() => setSheet("none")}
+        />
+      )}
+
+      {sheet === "schedule" && (
+        <EditScheduleSheet
+          initial={{
+            wateringIntervalDays: plant.wateringIntervalDays,
+            fertilizingIntervalDays: plant.fertilizingIntervalDays,
+            mistingIntervalDays: plant.mistingIntervalDays,
+          }}
+          onSave={handleSaveSchedule}
+          onCancel={() => setSheet("none")}
+        />
       )}
 
       <ConfirmDialog
         open={confirmDeletePlant}
-        destructive
         title="Delete this plant?"
         description="This permanently removes the plant, its photos, and its full care/diagnosis history."
         confirmLabel="Delete"
@@ -478,7 +475,9 @@ export default function PlantDetailPage() {
 
   return (
     <AuthGuard>
-      <PlantDetailContent plantId={plantId} />
+      <AppShell showTabBar={false}>
+        <PlantDetailContent plantId={plantId} />
+      </AppShell>
     </AuthGuard>
   );
 }

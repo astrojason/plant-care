@@ -89,17 +89,17 @@ describe("ConfirmDialog", () => {
     expect(screen.getByRole("button", { name: "Keep it" })).toBeInTheDocument();
   });
 
-  it("applies destructive styling to the confirm button when destructive is set", () => {
+  it("never applies a red fill to a destructive confirm button — Nocturne carries destructive weight in the label, not a red hue", () => {
     render(
       <ConfirmDialog
         open
-        destructive
         title="Delete plant?"
+        confirmLabel="Delete"
         onConfirm={() => {}}
         onCancel={() => {}}
       />
     );
 
-    expect(screen.getByRole("button", { name: /confirm/i }).className).toMatch(/red/);
+    expect(screen.getByRole("button", { name: "Delete" }).className).not.toMatch(/red/);
   });
 });

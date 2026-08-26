@@ -23,26 +23,17 @@ function PendingApproval({ onRefresh }: { onRefresh: () => Promise<void> }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Waiting for approval</h1>
-      <p className="max-w-sm text-sm text-gray-500 dark:text-gray-400">
+    <div className="flex flex-col items-center justify-center gap-4 p-6 text-center" style={{ minHeight: "100dvh" }}>
+      <h1 style={{ fontSize: 20, fontWeight: 500, margin: 0 }}>Waiting for approval</h1>
+      <p className="text-secondary" style={{ maxWidth: 360, fontSize: 14, margin: 0 }}>
         Your account has been created but hasn&apos;t been approved yet. An admin needs to grant
         you access before you can use Plant Care.
       </p>
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={handleRefresh}
-          disabled={checking}
-          className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50"
-        >
+      <div className="flex gap-[var(--space-2)]">
+        <button type="button" onClick={handleRefresh} disabled={checking} className="btn btn-primary">
           {checking ? "Checking…" : "Check again"}
         </button>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-        >
+        <button type="button" onClick={handleSignOut} className="btn btn-secondary">
           Sign out
         </button>
       </div>
@@ -74,8 +65,14 @@ export function AuthGuard({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-        Loading…
+      <div
+        role="status"
+        aria-label="Loading"
+        className="flex flex-col gap-[var(--space-3)] p-5"
+        style={{ minHeight: "100dvh" }}
+      >
+        <div className="skeleton-row" style={{ height: 68 }} />
+        <div className="skeleton-row" style={{ height: 68 }} />
       </div>
     );
   }
@@ -90,7 +87,7 @@ export function AuthGuard({
 
   if (requireAdmin && !isAdminRole(role)) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex items-center justify-center text-secondary" style={{ minHeight: "100dvh", fontSize: 14 }}>
         You don&apos;t have access to this page.
       </div>
     );

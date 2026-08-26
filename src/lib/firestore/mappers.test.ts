@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapCareEventDoc, mapDiagnosisDoc, mapPlantDoc } from "./mappers";
+import { mapCareEventDoc, mapDiagnosisDoc, mapPlantDoc, mapPlantPhotoDoc } from "./mappers";
 
 function ts(date: Date) {
   return { toDate: () => date };
@@ -66,6 +66,25 @@ describe("mapCareEventDoc", () => {
     });
 
     expect(event.notes).toBeNull();
+  });
+});
+
+describe("mapPlantPhotoDoc", () => {
+  it("maps a Firestore photo document", () => {
+    const photo = mapPlantPhotoDoc("photo-1", {
+      storagePath: "users/u1/plants/p1/a.jpg",
+      downloadUrl: "https://x/a.jpg",
+      photoType: "general",
+      createdAt: ts(new Date("2026-06-25T10:00:00Z")),
+    });
+
+    expect(photo).toEqual({
+      id: "photo-1",
+      storagePath: "users/u1/plants/p1/a.jpg",
+      downloadUrl: "https://x/a.jpg",
+      photoType: "general",
+      createdAt: new Date("2026-06-25T10:00:00Z"),
+    });
   });
 });
 

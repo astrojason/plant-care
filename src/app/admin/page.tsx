@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { AuthGuard } from "@/components/AuthGuard";
+import { AppShell } from "@/components/AppShell";
 import { ErrorBlock } from "@/components/ErrorBlock";
 import { parseJsonResponse } from "@/lib/api/parseJsonResponse";
 import type { Role } from "@/lib/firebase/roles";
@@ -85,39 +86,45 @@ function AdminContent() {
     viewerRole === "SUPERADMIN" ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => r !== "SUPERADMIN");
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">User approvals</h1>
+    <div className="p-5">
+      <h1 style={{ fontSize: 27, fontWeight: 500, margin: 0 }}>User approvals</h1>
 
       {error !== null && (
-        <div className="mt-6">
+        <div className="mt-[var(--space-4)]">
           <ErrorBlock error={error} title="Admin request failed" />
         </div>
       )}
 
-      {error === null && users === null && <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">Loading…</p>}
+      {error === null && users === null && (
+        <div role="status" aria-label="Loading" className="flex flex-col gap-[var(--space-1)] mt-[var(--space-4)]">
+          <div className="skeleton-row" style={{ height: 32 }} />
+          <div className="skeleton-row" style={{ height: 32 }} />
+        </div>
+      )}
 
       {users !== null && (
-        <table className="mt-6 w-full text-sm">
+        <table className="table mt-[var(--space-4)]">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500 dark:text-gray-400">
-              <th className="py-2">Email</th>
-              <th className="py-2">Role</th>
-              <th className="py-2" />
+            <tr>
+              <th>Email</th>
+              <th>Role</th>
+              <th />
             </tr>
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.uid} className="border-b border-gray-100">
-                <td className="py-2">{u.email ?? u.uid}</td>
-                <td className="py-2">{u.role ?? "PENDING"}</td>
-                <td className="py-2">
+              <tr key={u.uid}>
+                <td>{u.email ?? u.uid}</td>
+                <td>{u.role ?? "PENDING"}</td>
+                <td>
                   {canEdit(u) ? (
                     <select
                       aria-label={`Role for ${u.email ?? u.uid}`}
                       value={u.role ?? "PENDING"}
                       disabled={updatingUid === u.uid}
                       onChange={(e) => handleRoleChange(u.uid, e.target.value as Role)}
-                      className="rounded-md border border-gray-300 px-2 py-1"
+                      className="input"
+                      style={{ minHeight: 30, width: "auto" }}
                     >
                       {assignableRoles.map((r) => (
                         <option key={r} value={r}>
@@ -126,7 +133,7 @@ function AdminContent() {
                       ))}
                     </select>
                   ) : (
-                    <span className="text-xs text-gray-400">
+                    <span className="text-tertiary" style={{ fontSize: 11 }}>
                       {u.uid === user?.uid ? "This is you" : "Superadmin only"}
                     </span>
                   )}
@@ -143,7 +150,9 @@ function AdminContent() {
 export default function AdminPage() {
   return (
     <AuthGuard requireAdmin>
-      <AdminContent />
+      <AppShell>
+        <AdminContent />
+      </AppShell>
     </AuthGuard>
   );
 }

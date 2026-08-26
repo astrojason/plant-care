@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent, type DragEvent } from "react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { Image as ImageIcon } from "@phosphor-icons/react";
 import { storage } from "@/lib/firebase/client";
 import { prepareImageForUpload } from "@/lib/media/imageProcessing";
 import { ErrorBlock } from "./ErrorBlock";
@@ -24,13 +25,10 @@ export function PhotoUploader({
   onUploaded: (photo: UploadedPhoto) => void;
 }) {
   const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
+  async function handleFile(file: File) {
     setError(null);
     setUploading(true);
     try {
@@ -47,20 +45,52 @@ export function PhotoUploader({
     }
   }
 
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    void handleFile(file);
+  }
+
+  function handleDrop(e: DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) void handleFile(file);
+  }
+
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="photo-upload">
+    <div className="flex flex-col gap-[var(--space-2)]">
+      <label htmlFor="photo-upload" className="sr-only">
         Photo
       </label>
-      <input
-        id="photo-upload"
-        type="file"
-        accept="image/*"
-        disabled={uploading}
-        onChange={handleFileChange}
-        className="block w-full text-sm text-gray-700 dark:text-gray-300"
-      />
-      {uploading && <p className="text-sm text-gray-500 dark:text-gray-400">Uploading…</p>}
+      <label
+        htmlFor="photo-upload"
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragActive(true);
+        }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={handleDrop}
+        className="flex flex-col items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-dashed p-[var(--space-6)] text-center cursor-pointer transition-colors"
+        style={{
+          borderColor: dragActive || uploading ? "var(--color-accent)" : "var(--color-divider)",
+          color: uploading ? "var(--color-accent)" : "var(--text-secondary)",
+        }}
+      >
+        <ImageIcon size={28} weight="regular" />
+        <span className="text-sm">
+          {uploading ? "Uploading…" : "Take a photo or choose one"}
+        </span>
+        <input
+          id="photo-upload"
+          type="file"
+          accept="image/*"
+          disabled={uploading}
+          onChange={handleFileChange}
+          className="sr-only"
+        />
+      </label>
       {error !== null && <ErrorBlock error={error} title="Photo upload failed" />}
     </div>
   );

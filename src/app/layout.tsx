@@ -1,18 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
+import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
-import pkg from "../../package.json";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -26,19 +20,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full">
         <AuthProvider>{children}</AuthProvider>
-        <footer className="mt-auto border-t border-gray-200 py-4">
-          <div className="mx-auto max-w-4xl px-6 flex justify-end">
-            <Link href="/changelog" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors font-mono">
-              v{pkg.version}
-            </Link>
-          </div>
-        </footer>
       </body>
     </html>
   );

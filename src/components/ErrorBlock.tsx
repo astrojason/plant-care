@@ -46,25 +46,28 @@ export function ErrorBlock({ error, title = "Something went wrong" }: ErrorBlock
   return (
     <div
       role="alert"
-      className="rounded-md border border-red-300 bg-red-50 p-4 text-red-900"
+      className="rounded-[var(--radius-md)] p-[var(--space-4)]"
+      style={{ background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}
     >
       <div className="flex items-start justify-between gap-4">
-        <p className="font-semibold">{title}</p>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="shrink-0 text-xs underline hover:no-underline"
-        >
+        <p className="text-[15px] font-medium">{title}</p>
+        <button type="button" onClick={handleCopy} className="btn btn-ghost shrink-0">
           {copied ? "Copied" : "Copy error"}
         </button>
       </div>
-      <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-xs">
+      <pre
+        className="mt-2 whitespace-pre-wrap break-words text-xs"
+        style={{ fontFamily: "var(--font-mono)", fontSize: "12px", opacity: 0.78 }}
+      >
         {message}
       </pre>
       {stack && (
         <details className="mt-2">
-          <summary className="cursor-pointer text-xs">Stack trace</summary>
-          <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-xs">
+          <summary className="cursor-pointer text-xs text-secondary">Stack trace</summary>
+          <pre
+            className="mt-1 whitespace-pre-wrap break-words"
+            style={{ fontFamily: "var(--font-mono)", fontSize: "12px", opacity: 0.78 }}
+          >
             {stack}
           </pre>
         </details>
