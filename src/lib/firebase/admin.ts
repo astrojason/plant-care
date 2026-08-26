@@ -1,5 +1,10 @@
 import "server-only";
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
+// firebase-admin/auth pulls in jwks-rsa, which depends on jose@^6 — an
+// ESM-only build with no `require` export condition. Node's CJS `require()`
+// of jwks-rsa then fails with ERR_REQUIRE_ESM. package.json pins jose to
+// 5.10.0 (the last major with a working CJS build) via `overrides` to work
+// around it; see the "jose" entry there before touching this import.
 import { getAuth, type UserRecord } from "firebase-admin/auth";
 import { isRole, type Role } from "./roles";
 
