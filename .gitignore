@@ -28,6 +28,9 @@ storage-debug.log
 /.next/
 /out/
 
+# build-time generated
+/src/generated/
+
 # production
 /build
 

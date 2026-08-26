@@ -1,10 +1,10 @@
 {
   "name": "plant-care",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/generate-changelog.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
