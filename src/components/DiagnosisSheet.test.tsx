@@ -24,6 +24,8 @@ function makeResult(overrides: Partial<DiagnosisResult> = {}): DiagnosisResult {
     ],
     suggested_treatment: "Let the soil dry out between waterings.",
     urgency: "medium",
+    treatment_steps: null,
+    follow_up_days: null,
     ...overrides,
   };
 }

@@ -52,6 +52,8 @@ describe("DiagnosisResultSchema", () => {
     ],
     suggested_treatment: "Reduce watering frequency and check for root rot.",
     urgency: "medium" as const,
+    treatment_steps: null,
+    follow_up_days: null,
   };
 
   it("accepts a well-formed diagnosis result", () => {
