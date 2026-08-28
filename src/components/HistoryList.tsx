@@ -1,18 +1,20 @@
 "use client";
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Drop, Flask, CloudFog, FirstAidKit, Leaf, Trash } from "@phosphor-icons/react";
+import { Drop, Flask, CloudFog, FirstAidKit, Gauge, Leaf, Trash } from "@phosphor-icons/react";
 import type { CareEventType } from "@/lib/types/plant";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ErrorBlock } from "./ErrorBlock";
 
 export interface HistoryEntry {
   id: string;
-  kind: "care" | "diagnosis";
+  kind: "care" | "diagnosis" | "soilTest";
   careEventType?: CareEventType;
   label: string;
   date: Date;
 }
+
+const DELETABLE_KINDS: HistoryEntry["kind"][] = ["care", "soilTest"];
 
 const CARE_ICONS: Record<CareEventType, typeof Drop> = {
   watered: Drop,
@@ -37,7 +39,7 @@ function HistoryRow({
   const dragRef = useRef<{ startX: number; base: number } | null>(null);
 
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
-    if (entry.kind !== "care") return;
+    if (!DELETABLE_KINDS.includes(entry.kind)) return;
     dragRef.current = { startX: e.clientX, base: swipeX };
   }
   function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
@@ -51,14 +53,19 @@ function HistoryRow({
     setSwipeX((x) => (x < SWIPE_THRESHOLD ? SWIPE_OPEN_X : 0));
   }
 
-  const Icon = entry.kind === "diagnosis" ? FirstAidKit : CARE_ICONS[entry.careEventType ?? "other"];
+  const Icon =
+    entry.kind === "diagnosis"
+      ? FirstAidKit
+      : entry.kind === "soilTest"
+        ? Gauge
+        : CARE_ICONS[entry.careEventType ?? "other"];
 
   return (
     <div className={`relative overflow-hidden row-rule${odd ? " zebra-odd" : ""}`}>
-      {entry.kind === "care" && (
+      {DELETABLE_KINDS.includes(entry.kind) && (
         <button
           type="button"
-          aria-label={`Delete ${entry.label.toLowerCase()} event`}
+          aria-label={entry.kind === "soilTest" ? "Delete soil test" : `Delete ${entry.label.toLowerCase()} event`}
           onClick={() => onRequestDelete(entry.id)}
           className="history-row-delete"
         >
@@ -96,10 +103,10 @@ function HistoryRow({
  * delete; diagnosis rows aren't deletable. */
 export function HistoryList({
   entries,
-  onDeleteCareEvent,
+  onDelete,
 }: {
   entries: HistoryEntry[];
-  onDeleteCareEvent: (id: string) => Promise<void>;
+  onDelete: (entry: HistoryEntry) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -110,14 +117,14 @@ export function HistoryList({
   }
 
   const visible = expanded ? entries : entries.slice(0, 2);
+  const pendingDeleteEntry = entries.find((e) => e.id === pendingDeleteId) ?? null;
 
   async function confirmDelete() {
-    if (!pendingDeleteId) return;
-    const id = pendingDeleteId;
+    if (!pendingDeleteEntry) return;
     setPendingDeleteId(null);
     setError(null);
     try {
-      await onDeleteCareEvent(id);
+      await onDelete(pendingDeleteEntry);
     } catch (err) {
       setError(err);
     }
@@ -137,11 +144,11 @@ export function HistoryList({
           Show all
         </button>
       )}
-      {error !== null && <ErrorBlock error={error} title="Failed to delete care event" />}
+      {error !== null && <ErrorBlock error={error} title="Failed to delete history entry" />}
       <ConfirmDialog
-        open={pendingDeleteId !== null}
-        title="Delete this care event?"
-        description="This removes the logged event and may adjust the plant's last-done date."
+        open={pendingDeleteEntry !== null}
+        title={pendingDeleteEntry?.kind === "soilTest" ? "Delete this soil test?" : "Delete this care event?"}
+        description="This removes the logged entry and may adjust the plant's last-done date."
         confirmLabel="Delete"
         onConfirm={confirmDelete}
         onCancel={() => setPendingDeleteId(null)}

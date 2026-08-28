@@ -45,4 +45,28 @@ describe("POST /api/diagnose", () => {
     expect(res.status).toBe(200);
     expect(json).toEqual({ result: { ok: true } });
   });
+
+  it("folds a soil test reading into the user prompt text", async () => {
+    await POST(
+      makeRequest({
+        photoUrl: "https://x/y.jpg",
+        plantId: "plant-1",
+        soilTest: { ph: 6.5, moistureLevel: 7, lightLevel: 5 },
+      })
+    );
+
+    const config = mockHandleVisionRequest.mock.calls[0][1];
+    expect(config.userPromptText).toMatch(/pH 6\.5/);
+    expect(config.userPromptText).toMatch(/moisture 7\/10/);
+    expect(config.userPromptText).toMatch(/light 5\/8/);
+  });
+
+  it("ignores a malformed soil test payload", async () => {
+    await POST(
+      makeRequest({ photoUrl: "https://x/y.jpg", plantId: "plant-1", soilTest: "not an object" })
+    );
+
+    const config = mockHandleVisionRequest.mock.calls[0][1];
+    expect(config.userPromptText).toBe("Diagnose any health issues visible in this photo of my plant.");
+  });
 });

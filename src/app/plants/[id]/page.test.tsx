@@ -68,6 +68,13 @@ vi.mock("@/lib/firestore/diagnoses", () => ({
   createDiagnosis: (...args: unknown[]) => mockCreateDiagnosis(...args),
 }));
 
+const mockAddSoilTest = vi.fn();
+const mockDeleteSoilTest = vi.fn();
+vi.mock("@/lib/firestore/soilTests", () => ({
+  addSoilTest: (...args: unknown[]) => mockAddSoilTest(...args),
+  deleteSoilTest: (...args: unknown[]) => mockDeleteSoilTest(...args),
+}));
+
 vi.mock("@/components/PhotoUploader", () => ({
   PhotoUploader: ({ onUploaded }: { onUploaded: (p: { storagePath: string; downloadUrl: string }) => void }) => (
     <button
@@ -125,6 +132,7 @@ function renderAndLoadPlant() {
     subscriptions[1]?.onNext({ docs: [] });
     subscriptions[2]?.onNext({ docs: [] });
     subscriptions[3]?.onNext({ docs: [] });
+    subscriptions[4]?.onNext({ docs: [] });
   });
 }
 
@@ -138,6 +146,8 @@ beforeEach(() => {
   mockUpdateCareSchedule.mockReset();
   mockAddPlantPhoto.mockReset();
   mockCreateDiagnosis.mockReset();
+  mockAddSoilTest.mockReset();
+  mockDeleteSoilTest.mockReset();
   mockFetch.mockReset();
   mockReplace.mockReset();
   mockBack.mockReset();
@@ -178,6 +188,7 @@ describe("PlantDetailPage", () => {
       });
       subscriptions[2]?.onNext({ docs: [] });
       subscriptions[3]?.onNext({ docs: [] });
+      subscriptions[4]?.onNext({ docs: [] });
     });
 
     await user.click(screen.getByRole("button", { name: /delete watered event/i }));
@@ -238,6 +249,51 @@ describe("PlantDetailPage", () => {
     );
   });
 
+  it("logs a soil test with pH, moisture, and light from the overflow menu's sheet", async () => {
+    mockAddSoilTest.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderAndLoadPlant();
+
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("button", { name: "Log soil test" }));
+    await user.type(screen.getByLabelText("pH"), "6.5");
+    await user.click(screen.getByRole("button", { name: "Increase moisture" }));
+    await user.click(screen.getByRole("button", { name: "Increase light" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mockAddSoilTest).toHaveBeenCalledWith("user-1", "plant-1", {
+      ph: 6.5,
+      moistureLevel: 1,
+      lightLevel: 1,
+      notes: null,
+    });
+  });
+
+  it("deletes a soil test from history after confirmation", async () => {
+    mockDeleteSoilTest.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<PlantDetailPage />);
+    act(() => {
+      subscriptions[0]?.onNext(plantSnapshot());
+      subscriptions[1]?.onNext({ docs: [] });
+      subscriptions[2]?.onNext({ docs: [] });
+      subscriptions[3]?.onNext({
+        docs: [
+          {
+            id: "test-1",
+            data: () => ({ ph: 6.5, moistureLevel: 7, lightLevel: 5, occurredAt: ts(new Date("2026-06-25")) }),
+          },
+        ],
+      });
+      subscriptions[4]?.onNext({ docs: [] });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete soil test" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(mockDeleteSoilTest).toHaveBeenCalledWith("user-1", "plant-1", "test-1");
+  });
+
   it("runs a diagnosis from the footer CTA, shows the result, and saves it on request", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ result: DIAGNOSIS_RESULT }) });
     mockAddPlantPhoto.mockResolvedValue("photo-1");
@@ -282,7 +338,47 @@ describe("PlantDetailPage", () => {
     expect(mockFetch).toHaveBeenLastCalledWith(
       "/api/diagnose",
       expect.objectContaining({
-        body: JSON.stringify({ photoUrl: "https://x/diag.jpg", plantId: "plant-1", confirmNearLimit: true }),
+        body: JSON.stringify({
+          photoUrl: "https://x/diag.jpg",
+          plantId: "plant-1",
+          confirmNearLimit: true,
+          soilTest: null,
+        }),
+      })
+    );
+  });
+
+  it("includes the most recent soil test reading when running a diagnosis", async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ result: DIAGNOSIS_RESULT }) });
+    const user = userEvent.setup();
+    render(<PlantDetailPage />);
+    act(() => {
+      subscriptions[0]?.onNext(plantSnapshot());
+      subscriptions[1]?.onNext({ docs: [] });
+      subscriptions[2]?.onNext({ docs: [] });
+      subscriptions[3]?.onNext({
+        docs: [
+          {
+            id: "test-1",
+            data: () => ({ ph: 6.5, moistureLevel: 7, lightLevel: 5, occurredAt: ts(new Date("2026-06-25")) }),
+          },
+        ],
+      });
+      subscriptions[4]?.onNext({ docs: [] });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Something looks wrong" }));
+    await user.click(screen.getByRole("button", { name: "Fake diagnose upload" }));
+
+    expect(mockFetch).toHaveBeenLastCalledWith(
+      "/api/diagnose",
+      expect.objectContaining({
+        body: JSON.stringify({
+          photoUrl: "https://x/diag.jpg",
+          plantId: "plant-1",
+          confirmNearLimit: false,
+          soilTest: { ph: 6.5, moistureLevel: 7, lightLevel: 5 },
+        }),
       })
     );
   });

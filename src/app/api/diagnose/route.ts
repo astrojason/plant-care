@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { handleVisionRequest } from "@/lib/openai/visionRoute";
 import { DiagnosisResultSchema } from "@/lib/openai/schemas";
-import { DIAGNOSE_SYSTEM_PROMPT, DIAGNOSE_USER_PROMPT } from "@/lib/openai/prompts";
+import { buildDiagnoseUserPrompt, DIAGNOSE_SYSTEM_PROMPT, type SoilTestContext } from "@/lib/openai/prompts";
+
+function parseSoilTestContext(value: unknown): SoilTestContext | null {
+  if (typeof value !== "object" || value === null) return null;
+  const v = value as Record<string, unknown>;
+  const ph = typeof v.ph === "number" ? v.ph : null;
+  const moistureLevel = typeof v.moistureLevel === "number" ? v.moistureLevel : null;
+  const lightLevel = typeof v.lightLevel === "number" ? v.lightLevel : null;
+  if (ph === null && moistureLevel === null && lightLevel === null) return null;
+  return { ph, moistureLevel, lightLevel };
+}
 
 export async function POST(request: Request) {
   // Diagnosis always attaches to an existing plant (no standalone diagnosis
@@ -9,9 +19,11 @@ export async function POST(request: Request) {
   // work in handleVisionRequest. Clone so the body stream is still readable
   // by handleVisionRequest afterward.
   let plantId: unknown;
+  let soilTest: unknown;
   try {
     const body = await request.clone().json();
     plantId = body?.plantId;
+    soilTest = body?.soilTest;
   } catch {
     // Malformed JSON is handled uniformly inside handleVisionRequest.
   }
@@ -25,7 +37,7 @@ export async function POST(request: Request) {
 
   const { status, body } = await handleVisionRequest(request, {
     systemPrompt: DIAGNOSE_SYSTEM_PROMPT,
-    userPromptText: DIAGNOSE_USER_PROMPT,
+    userPromptText: buildDiagnoseUserPrompt(parseSoilTestContext(soilTest)),
     schema: DiagnosisResultSchema,
     schemaName: "plant_diagnosis",
   });

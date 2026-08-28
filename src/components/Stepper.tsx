@@ -7,12 +7,14 @@ export function Stepper({
   value,
   onChange,
   min = 1,
+  max,
   step = 1,
   label,
 }: {
   value: number | null;
   onChange: (value: number | null) => void;
   min?: number;
+  max?: number;
   step?: number;
   label: string;
 }) {
@@ -22,7 +24,8 @@ export function Stepper({
     onChange(next < min ? null : next);
   }
   function increment() {
-    onChange(value === null ? min : value + step);
+    const next = value === null ? min : value + step;
+    onChange(max !== undefined && next > max ? max : next);
   }
 
   return (

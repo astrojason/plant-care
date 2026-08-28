@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapCareEventDoc, mapDiagnosisDoc, mapPlantDoc, mapPlantPhotoDoc } from "./mappers";
+import { mapCareEventDoc, mapDiagnosisDoc, mapPlantDoc, mapPlantPhotoDoc, mapSoilTestDoc } from "./mappers";
 
 function ts(date: Date) {
   return { toDate: () => date };
@@ -85,6 +85,36 @@ describe("mapPlantPhotoDoc", () => {
       photoType: "general",
       createdAt: new Date("2026-06-25T10:00:00Z"),
     });
+  });
+});
+
+describe("mapSoilTestDoc", () => {
+  it("maps a Firestore soil test document", () => {
+    const test = mapSoilTestDoc("test-1", {
+      ph: 6.5,
+      moistureLevel: 7,
+      lightLevel: 5,
+      notes: "topsoil felt dry",
+      occurredAt: ts(new Date("2026-06-25T10:00:00Z")),
+    });
+
+    expect(test).toEqual({
+      id: "test-1",
+      ph: 6.5,
+      moistureLevel: 7,
+      lightLevel: 5,
+      notes: "topsoil felt dry",
+      occurredAt: new Date("2026-06-25T10:00:00Z"),
+    });
+  });
+
+  it("defaults missing optional fields to null", () => {
+    const test = mapSoilTestDoc("test-1", { occurredAt: ts(new Date("2026-06-25T10:00:00Z")) });
+
+    expect(test.ph).toBeNull();
+    expect(test.moistureLevel).toBeNull();
+    expect(test.lightLevel).toBeNull();
+    expect(test.notes).toBeNull();
   });
 });
 

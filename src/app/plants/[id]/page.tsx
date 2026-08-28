@@ -18,16 +18,24 @@ import { ErrorBlock } from "@/components/ErrorBlock";
 import { DiagnosisSheet } from "@/components/DiagnosisSheet";
 import { EditSpeciesSheet, type SpeciesFormValues } from "@/components/EditSpeciesSheet";
 import { EditScheduleSheet, type ScheduleFormValues } from "@/components/EditScheduleSheet";
+import { LogSoilTestSheet, type SoilTestFormValues } from "@/components/LogSoilTestSheet";
 import type { UploadedPhoto } from "@/components/PhotoUploader";
 import { getMostUrgentTask } from "@/lib/care/schedule";
 import { deleteCareEvent, logCareEvent } from "@/lib/care/log";
 import { deletePlant, updateCareSchedule, updatePlantSpecies } from "@/lib/firestore/plants";
 import { addPlantPhoto } from "@/lib/firestore/photos";
 import { createDiagnosis } from "@/lib/firestore/diagnoses";
+import { addSoilTest, deleteSoilTest } from "@/lib/firestore/soilTests";
 import { prepareImageForUpload } from "@/lib/media/imageProcessing";
 import { parseJsonResponse } from "@/lib/api/parseJsonResponse";
-import { mapCareEventDoc, mapDiagnosisDoc, mapPlantDoc, mapPlantPhotoDoc } from "@/lib/firestore/mappers";
-import type { CareEvent, CareEventType, Diagnosis, Plant, PlantPhoto } from "@/lib/types/plant";
+import {
+  mapCareEventDoc,
+  mapDiagnosisDoc,
+  mapPlantDoc,
+  mapPlantPhotoDoc,
+  mapSoilTestDoc,
+} from "@/lib/firestore/mappers";
+import type { CareEvent, CareEventType, Diagnosis, Plant, PlantPhoto, SoilTest } from "@/lib/types/plant";
 import type { DiagnosisResult } from "@/lib/openai/schemas";
 
 const CARE_EVENT_LABELS: Record<CareEventType, string> = {
@@ -44,7 +52,15 @@ interface NearLimitState {
   photoPath: string;
 }
 
-type Sheet = "none" | "diagnosis" | "species" | "schedule";
+type Sheet = "none" | "diagnosis" | "species" | "schedule" | "soilTest";
+
+function summarizeSoilTest(test: SoilTest): string {
+  const parts: string[] = [];
+  if (test.ph !== null) parts.push(`pH ${test.ph}`);
+  if (test.moistureLevel !== null) parts.push(`moisture ${test.moistureLevel}/10`);
+  if (test.lightLevel !== null) parts.push(`light ${test.lightLevel}/8`);
+  return parts.length > 0 ? `Soil test · ${parts.join(", ")}` : "Soil test";
+}
 
 function PlantDetailContent({ plantId }: { plantId: string }) {
   const { user } = useAuth();
@@ -54,6 +70,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
   const [plant, setPlant] = useState<Plant | null>(null);
   const [careEvents, setCareEvents] = useState<CareEvent[]>([]);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
+  const [soilTests, setSoilTests] = useState<SoilTest[]>([]);
   const [photos, setPhotos] = useState<PlantPhoto[]>([]);
   const [error, setError] = useState<unknown>(null);
 
@@ -108,6 +125,20 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
   }, [user, plantId]);
 
   useEffect(() => {
+    if (!user) return;
+    const soilTestsQuery = query(
+      collection(db, "users", user.uid, "plants", plantId, "soilTests"),
+      orderBy("occurredAt", "desc")
+    );
+    const unsubscribe = onSnapshot(
+      soilTestsQuery,
+      (snap) => setSoilTests(snap.docs.map((d) => mapSoilTestDoc(d.id, d.data()))),
+      (err) => setError(err)
+    );
+    return unsubscribe;
+  }, [user, plantId]);
+
+  useEffect(() => {
     if (searchParams.get("diagnose") === "1") {
       openDiagnoseSheet();
     }
@@ -142,19 +173,46 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
       label: "Diagnosis",
       date: d.createdAt,
     }));
-    return [...careEntries, ...diagnosisEntries].sort((a, b) => b.date.getTime() - a.date.getTime());
-  }, [careEvents, diagnoses]);
+    const soilTestEntries: HistoryEntry[] = soilTests.map((t) => ({
+      id: t.id,
+      kind: "soilTest",
+      label: summarizeSoilTest(t),
+      date: t.occurredAt,
+    }));
+    return [...careEntries, ...diagnosisEntries, ...soilTestEntries].sort(
+      (a, b) => b.date.getTime() - a.date.getTime()
+    );
+  }, [careEvents, diagnoses, soilTests]);
 
   async function handleLog(eventType: "watered" | "fertilized" | "misted") {
     if (!user) return;
     await logCareEvent(user.uid, plantId, eventType);
   }
 
-  async function handleDeleteCareEvent(eventId: string) {
+  async function handleDeleteHistoryEntry(entry: HistoryEntry) {
     if (!user) return;
-    const event = careEvents.find((e) => e.id === eventId);
-    if (!event) return;
-    await deleteCareEvent(user.uid, plantId, eventId, event.eventType);
+    if (entry.kind === "care") {
+      const event = careEvents.find((e) => e.id === entry.id);
+      if (!event) return;
+      await deleteCareEvent(user.uid, plantId, entry.id, event.eventType);
+    } else if (entry.kind === "soilTest") {
+      await deleteSoilTest(user.uid, plantId, entry.id);
+    }
+  }
+
+  async function handleSaveSoilTest(values: SoilTestFormValues) {
+    if (!user) return;
+    try {
+      await addSoilTest(user.uid, plantId, {
+        ph: values.ph,
+        moistureLevel: values.moistureLevel,
+        lightLevel: values.lightLevel,
+        notes: values.notes || null,
+      });
+      setSheet("none");
+    } catch (err) {
+      setError(err);
+    }
   }
 
   async function handleDeletePlant() {
@@ -218,10 +276,13 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     setDiagnosing(true);
     try {
       const idToken = await user.getIdToken();
+      const latestSoilTest = soilTests[0]
+        ? { ph: soilTests[0].ph, moistureLevel: soilTests[0].moistureLevel, lightLevel: soilTests[0].lightLevel }
+        : null;
       const res = await fetch("/api/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ photoUrl, plantId, confirmNearLimit }),
+        body: JSON.stringify({ photoUrl, plantId, confirmNearLimit, soilTest: latestSoilTest }),
       });
       const json = await parseJsonResponse(res);
       if (!res.ok) {
@@ -363,6 +424,16 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
                   className="overflow-menu-item"
                   onClick={() => {
                     setOverflowOpen(false);
+                    setSheet("soilTest");
+                  }}
+                >
+                  Log soil test
+                </button>
+                <button
+                  type="button"
+                  className="overflow-menu-item"
+                  onClick={() => {
+                    setOverflowOpen(false);
                     setConfirmDeletePlant(true);
                   }}
                 >
@@ -395,7 +466,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
 
         <section>
           <h2 className="kicker mb-[var(--space-2)]">History</h2>
-          <HistoryList entries={historyEntries} onDeleteCareEvent={handleDeleteCareEvent} />
+          <HistoryList entries={historyEntries} onDelete={handleDeleteHistoryEntry} />
         </section>
 
         <button type="button" onClick={openDiagnoseSheet} className="btn btn-primary btn-block" style={{ minHeight: 46 }}>
@@ -442,6 +513,10 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
           onSave={handleSaveSchedule}
           onCancel={() => setSheet("none")}
         />
+      )}
+
+      {sheet === "soilTest" && (
+        <LogSoilTestSheet onSave={handleSaveSoilTest} onCancel={() => setSheet("none")} />
       )}
 
       <ConfirmDialog

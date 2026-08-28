@@ -1,5 +1,5 @@
 import type { Timestamp, DocumentData } from "firebase/firestore";
-import type { CareEvent, DetectedIssue, Diagnosis, Plant, PlantPhoto } from "@/lib/types/plant";
+import type { CareEvent, DetectedIssue, Diagnosis, Plant, PlantPhoto, SoilTest } from "@/lib/types/plant";
 
 function toDateOrNull(value: Timestamp | null | undefined): Date | null {
   return value ? value.toDate() : null;
@@ -41,6 +41,17 @@ export function mapPlantPhotoDoc(id: string, data: DocumentData): PlantPhoto {
     downloadUrl: data.downloadUrl,
     photoType: data.photoType,
     createdAt: toDateOrNull(data.createdAt) ?? new Date(),
+  };
+}
+
+export function mapSoilTestDoc(id: string, data: DocumentData): SoilTest {
+  return {
+    id,
+    ph: data.ph ?? null,
+    moistureLevel: data.moistureLevel ?? null,
+    lightLevel: data.lightLevel ?? null,
+    notes: data.notes ?? null,
+    occurredAt: toDateOrNull(data.occurredAt) ?? new Date(),
   };
 }
 

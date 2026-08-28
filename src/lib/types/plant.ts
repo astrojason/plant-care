@@ -50,3 +50,17 @@ export interface Diagnosis {
   urgency: DiagnosisUrgency;
   createdAt: Date;
 }
+
+/**
+ * A reading from a handheld 3-in-1 soil meter (pH, moisture, light). All
+ * three fields are independently optional since a meter may only report
+ * some of them, or a user may only note the ones they read.
+ */
+export interface SoilTest {
+  id: string;
+  ph: number | null;
+  moistureLevel: number | null;
+  lightLevel: number | null;
+  notes: string | null;
+  occurredAt: Date;
+}

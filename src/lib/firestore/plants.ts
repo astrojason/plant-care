@@ -67,7 +67,7 @@ export async function updateCareSchedule(
   await updateDoc(plantRef, { ...schedule, updatedAt: serverTimestamp() });
 }
 
-const PLANT_SUBCOLLECTIONS = ["photos", "careEvents", "diagnoses"] as const;
+const PLANT_SUBCOLLECTIONS = ["photos", "careEvents", "diagnoses", "soilTests"] as const;
 
 /**
  * Firestore doesn't cascade-delete subcollections, and Storage files aren't
