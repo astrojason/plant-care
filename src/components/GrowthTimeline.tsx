@@ -3,7 +3,10 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import type { PlantPhoto } from "@/lib/types/plant";
 
-/** The last four photos (newest last), rest behind "Show all". */
+/** Growth photos only (identification/diagnosis shots are shown elsewhere). Shown once there
+ *  are enough to fill a full row; the last four (newest last), rest behind "Show all". */
+const MIN_PHOTOS_TO_SHOW = 4;
+
 export function GrowthTimeline({
   photos,
   onAddPhoto,
@@ -15,7 +18,8 @@ export function GrowthTimeline({
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const sorted = [...photos].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const growthPhotos = photos.filter((p) => p.photoType === "general");
+  const sorted = [...growthPhotos].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const displayed = expanded ? sorted : sorted.slice(-4);
   const hiddenCount = sorted.length - displayed.length;
 
@@ -54,8 +58,12 @@ export function GrowthTimeline({
         </div>
       </div>
 
-      {displayed.length === 0 ? (
-        <p className="text-sm text-secondary">No photos yet.</p>
+      {sorted.length < MIN_PHOTOS_TO_SHOW ? (
+        <p className="text-sm text-secondary">
+          {sorted.length === 0
+            ? "No photos yet."
+            : `Add ${MIN_PHOTOS_TO_SHOW - sorted.length} more photo${MIN_PHOTOS_TO_SHOW - sorted.length === 1 ? "" : "s"} to start a timeline.`}
+        </p>
       ) : (
         <div className="growth-timeline">
           {displayed.map((photo) => (
