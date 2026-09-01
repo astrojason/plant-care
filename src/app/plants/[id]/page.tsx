@@ -22,7 +22,7 @@ import { LogSoilTestSheet, type SoilTestFormValues } from "@/components/LogSoilT
 import type { UploadedPhoto } from "@/components/PhotoUploader";
 import { getMostUrgentTask } from "@/lib/care/schedule";
 import { deleteCareEvent, logCareEvent } from "@/lib/care/log";
-import { deletePlant, updateCareSchedule, updatePlantSpecies } from "@/lib/firestore/plants";
+import { deletePlant, deletePlantPhoto, updateCareSchedule, updatePlantSpecies } from "@/lib/firestore/plants";
 import { addPlantPhoto } from "@/lib/firestore/photos";
 import { createDiagnosis, deleteDiagnosis } from "@/lib/firestore/diagnoses";
 import { addSoilTest, deleteSoilTest } from "@/lib/firestore/soilTests";
@@ -272,6 +272,11 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     await addPlantPhoto(user.uid, plantId, storagePath, downloadUrl, "general");
   }
 
+  async function handleDeleteGrowthPhoto(photo: PlantPhoto) {
+    if (!user) return;
+    await deletePlantPhoto(user.uid, plantId, photo.id, photo.storagePath);
+  }
+
   function openDiagnoseSheet() {
     setDiagnosePhoto(null);
     setDiagnosisResult(null);
@@ -486,7 +491,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
 
         <CadenceRows plant={plant} />
 
-        <GrowthTimeline photos={photos} onAddPhoto={handleAddGrowthPhoto} />
+        <GrowthTimeline photos={photos} onAddPhoto={handleAddGrowthPhoto} onDeletePhoto={handleDeleteGrowthPhoto} />
 
         <section>
           <h2 className="kicker mb-[var(--space-2)]">History</h2>

@@ -89,7 +89,15 @@ export async function deletePlant(uid: string, plantId: string): Promise<void> {
   await Promise.all(listing.items.map((item) => deleteObject(item)));
 }
 
-export async function deletePlantPhoto(uid: string, plantId: string, photoId: string): Promise<void> {
+export async function deletePlantPhoto(
+  uid: string,
+  plantId: string,
+  photoId: string,
+  storagePath: string
+): Promise<void> {
   const photoRef = doc(db, "users", uid, "plants", plantId, "photos", photoId);
   await deleteDoc(photoRef);
+  await deleteObject(ref(storage, storagePath)).catch((err) => {
+    console.error("Failed to delete photo from storage", err);
+  });
 }

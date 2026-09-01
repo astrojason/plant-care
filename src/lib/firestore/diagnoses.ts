@@ -1,5 +1,6 @@
-import { addDoc, collection, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
+import { deletePlantPhoto } from "@/lib/firestore/plants";
 import type { DiagnosisResult } from "@/lib/openai/schemas";
 
 export async function createDiagnosis(
@@ -24,5 +25,17 @@ export async function createDiagnosis(
 
 export async function deleteDiagnosis(uid: string, plantId: string, diagnosisId: string): Promise<void> {
   const diagnosisRef = doc(db, "users", uid, "plants", plantId, "diagnoses", diagnosisId);
+  const diagnosisSnap = await getDoc(diagnosisRef);
+  const photoId = diagnosisSnap.data()?.photoId as string | null | undefined;
+
   await deleteDoc(diagnosisRef);
+
+  if (photoId) {
+    const photoRef = doc(db, "users", uid, "plants", plantId, "photos", photoId);
+    const photoSnap = await getDoc(photoRef);
+    const storagePath = photoSnap.data()?.storagePath as string | undefined;
+    if (storagePath) {
+      await deletePlantPhoto(uid, plantId, photoId, storagePath);
+    }
+  }
 }

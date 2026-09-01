@@ -76,6 +76,11 @@
 }
 .growth-tile figcaption { font-size: 10px; color: var(--text-tertiary); text-align: center; }
 
+.growth-thumb-row { display: flex; gap: var(--space-2); flex: none; }
+.growth-thumb img {
+  height: 40px; width: 40px; border-radius: var(--radius-sm); object-fit: cover; display: block;
+}
+
 /* — plant detail: history — */
 .history-row {
   position: relative; display: flex; align-items: center; gap: var(--space-3);
