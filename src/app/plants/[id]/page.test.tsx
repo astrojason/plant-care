@@ -64,8 +64,10 @@ vi.mock("@/lib/firestore/photos", () => ({
 }));
 
 const mockCreateDiagnosis = vi.fn();
+const mockDeleteDiagnosis = vi.fn();
 vi.mock("@/lib/firestore/diagnoses", () => ({
   createDiagnosis: (...args: unknown[]) => mockCreateDiagnosis(...args),
+  deleteDiagnosis: (...args: unknown[]) => mockDeleteDiagnosis(...args),
 }));
 
 const mockAddSoilTest = vi.fn();
@@ -146,6 +148,7 @@ beforeEach(() => {
   mockUpdateCareSchedule.mockReset();
   mockAddPlantPhoto.mockReset();
   mockCreateDiagnosis.mockReset();
+  mockDeleteDiagnosis.mockReset();
   mockAddSoilTest.mockReset();
   mockDeleteSoilTest.mockReset();
   mockFetch.mockReset();
@@ -292,6 +295,37 @@ describe("PlantDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(mockDeleteSoilTest).toHaveBeenCalledWith("user-1", "plant-1", "test-1");
+  });
+
+  it("deletes a diagnosis from history after confirmation", async () => {
+    mockDeleteDiagnosis.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<PlantDetailPage />);
+    act(() => {
+      subscriptions[0]?.onNext(plantSnapshot());
+      subscriptions[1]?.onNext({ docs: [] });
+      subscriptions[2]?.onNext({
+        docs: [
+          {
+            id: "diag-1",
+            data: () => ({
+              photoId: "photo-1",
+              detectedIssues: [{ issue: "Overwatering", confidence: 0.7, symptomsObserved: ["Yellowing leaves"] }],
+              suggestedTreatment: "Water less often.",
+              urgency: "medium",
+              createdAt: ts(new Date("2026-06-25")),
+            }),
+          },
+        ],
+      });
+      subscriptions[3]?.onNext({ docs: [] });
+      subscriptions[4]?.onNext({ docs: [] });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete diagnosis" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(mockDeleteDiagnosis).toHaveBeenCalledWith("user-1", "plant-1", "diag-1");
   });
 
   it("runs a diagnosis from the footer CTA, shows the result, and saves it on request", async () => {

@@ -24,7 +24,7 @@ import { getMostUrgentTask } from "@/lib/care/schedule";
 import { deleteCareEvent, logCareEvent } from "@/lib/care/log";
 import { deletePlant, updateCareSchedule, updatePlantSpecies } from "@/lib/firestore/plants";
 import { addPlantPhoto } from "@/lib/firestore/photos";
-import { createDiagnosis } from "@/lib/firestore/diagnoses";
+import { createDiagnosis, deleteDiagnosis } from "@/lib/firestore/diagnoses";
 import { addSoilTest, deleteSoilTest } from "@/lib/firestore/soilTests";
 import { prepareImageForUpload } from "@/lib/media/imageProcessing";
 import { parseJsonResponse } from "@/lib/api/parseJsonResponse";
@@ -206,6 +206,8 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
       await deleteCareEvent(user.uid, plantId, entry.id, event.eventType);
     } else if (entry.kind === "soilTest") {
       await deleteSoilTest(user.uid, plantId, entry.id);
+    } else if (entry.kind === "diagnosis") {
+      await deleteDiagnosis(user.uid, plantId, entry.id);
     }
   }
 

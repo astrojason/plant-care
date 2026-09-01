@@ -1,4 +1,4 @@
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import type { DiagnosisResult } from "@/lib/openai/schemas";
 
@@ -20,4 +20,9 @@ export async function createDiagnosis(
     rawAiResponse: result,
     createdAt: serverTimestamp(),
   });
+}
+
+export async function deleteDiagnosis(uid: string, plantId: string, diagnosisId: string): Promise<void> {
+  const diagnosisRef = doc(db, "users", uid, "plants", plantId, "diagnoses", diagnosisId);
+  await deleteDoc(diagnosisRef);
 }

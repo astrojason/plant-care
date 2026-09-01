@@ -14,7 +14,7 @@ export interface HistoryEntry {
   date: Date;
 }
 
-const DELETABLE_KINDS: HistoryEntry["kind"][] = ["care", "soilTest"];
+const DELETABLE_KINDS: HistoryEntry["kind"][] = ["care", "soilTest", "diagnosis"];
 
 const CARE_ICONS: Record<CareEventType, typeof Drop> = {
   watered: Drop,
@@ -65,7 +65,13 @@ function HistoryRow({
       {DELETABLE_KINDS.includes(entry.kind) && (
         <button
           type="button"
-          aria-label={entry.kind === "soilTest" ? "Delete soil test" : `Delete ${entry.label.toLowerCase()} event`}
+          aria-label={
+            entry.kind === "soilTest"
+              ? "Delete soil test"
+              : entry.kind === "diagnosis"
+                ? "Delete diagnosis"
+                : `Delete ${entry.label.toLowerCase()} event`
+          }
           onClick={() => onRequestDelete(entry.id)}
           className="history-row-delete"
         >
@@ -98,9 +104,9 @@ function HistoryRow({
   );
 }
 
-/** Care events and diagnoses, interleaved newest-first. Two rows visible by
- * default, the rest behind "Show all". Care rows swipe left to reveal
- * delete; diagnosis rows aren't deletable. */
+/** Care events, diagnoses, and soil tests, interleaved newest-first. Two
+ * rows visible by default, the rest behind "Show all". All rows swipe left
+ * to reveal delete. */
 export function HistoryList({
   entries,
   onDelete,
@@ -147,8 +153,18 @@ export function HistoryList({
       {error !== null && <ErrorBlock error={error} title="Failed to delete history entry" />}
       <ConfirmDialog
         open={pendingDeleteEntry !== null}
-        title={pendingDeleteEntry?.kind === "soilTest" ? "Delete this soil test?" : "Delete this care event?"}
-        description="This removes the logged entry and may adjust the plant's last-done date."
+        title={
+          pendingDeleteEntry?.kind === "soilTest"
+            ? "Delete this soil test?"
+            : pendingDeleteEntry?.kind === "diagnosis"
+              ? "Delete this diagnosis?"
+              : "Delete this care event?"
+        }
+        description={
+          pendingDeleteEntry?.kind === "diagnosis"
+            ? "This permanently removes the diagnosis and its suggested treatment from this plant's history."
+            : "This removes the logged entry and may adjust the plant's last-done date."
+        }
         confirmLabel="Delete"
         onConfirm={confirmDelete}
         onCancel={() => setPendingDeleteId(null)}
