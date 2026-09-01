@@ -54,6 +54,7 @@ describe("DiagnosisResultSchema", () => {
     urgency: "medium" as const,
     treatment_steps: null,
     follow_up_days: null,
+    schedule_adjustment: null,
   };
 
   it("accepts a well-formed diagnosis result", () => {
@@ -77,6 +78,23 @@ describe("DiagnosisResultSchema", () => {
       DiagnosisResultSchema.parse({
         ...valid,
         detected_issues: [{ issue: "Overwatering", confidence: 0.7 }],
+      })
+    ).toThrow();
+  });
+
+  it("accepts a schedule_adjustment suggesting a new watering interval", () => {
+    const withAdjustment = {
+      ...valid,
+      schedule_adjustment: { care_type: "watering" as const, suggested_interval_days: 10, reason: "Overwatered." },
+    };
+    expect(DiagnosisResultSchema.parse(withAdjustment)).toEqual(withAdjustment);
+  });
+
+  it("rejects a schedule_adjustment with a non-positive interval", () => {
+    expect(() =>
+      DiagnosisResultSchema.parse({
+        ...valid,
+        schedule_adjustment: { care_type: "watering", suggested_interval_days: 0, reason: "Overwatered." },
       })
     ).toThrow();
   });

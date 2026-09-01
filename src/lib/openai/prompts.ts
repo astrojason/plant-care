@@ -16,7 +16,9 @@ You may also be given a recent soil meter reading (pH, moisture on a 1-10 dry-to
 
 Always include, as part of suggested_treatment, a brief note that this is an AI estimate and not a substitute for professional diagnosis, especially for high-value or valuable plants.
 
-Also break the treatment down into treatment_steps: an ordered list of { action, timing } pairs — concrete actions with when to do them (e.g. "Move to indirect light" / "immediately", "Check soil moisture" / "in 3 days"). And set follow_up_days to how many days from now the owner should check back in and take a new photo, based on how quickly this issue should show improvement.`;
+Also break the treatment down into treatment_steps: an ordered list of { action, timing } pairs — concrete actions with when to do them (e.g. "Move to indirect light" / "immediately", "Check soil moisture" / "in 3 days"). And set follow_up_days to how many days from now the owner should check back in and take a new photo, based on how quickly this issue should show improvement.
+
+If the diagnosis implies the plant's watering, fertilizing, or misting schedule is wrong — e.g. overwatering or root rot means water less often, underwatering or crispy/drooping leaves from dryness means water more often — set schedule_adjustment to the single most relevant care type, a suggested_interval_days for it, and a short reason. Only set it when the evidence points to a specific new interval; otherwise leave it null (e.g. for pests, sunburn, or a healthy plant).`;
 
 export const IDENTIFY_USER_PROMPT = "Identify this plant from the photo.";
 export const DIAGNOSE_USER_PROMPT =

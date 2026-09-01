@@ -1,6 +1,6 @@
 "use client";
 
-import { X, CalendarCheck, Sparkle } from "@phosphor-icons/react";
+import { X, CalendarCheck, Sparkle, ArrowsClockwise } from "@phosphor-icons/react";
 import type { DiagnosisResult } from "@/lib/openai/schemas";
 import { PhotoUploader, type UploadedPhoto } from "./PhotoUploader";
 import { ErrorBlock } from "./ErrorBlock";
@@ -9,6 +9,12 @@ const URGENCY_COPY: Record<DiagnosisResult["urgency"], string> = {
   low: "Worth watching",
   medium: "Needs attention this week",
   high: "Act today",
+};
+
+const CARE_TYPE_COPY: Record<NonNullable<DiagnosisResult["schedule_adjustment"]>["care_type"], string> = {
+  watering: "Watering",
+  fertilizing: "Fertilizing",
+  misting: "Misting",
 };
 
 function summarize(result: DiagnosisResult): string {
@@ -181,6 +187,20 @@ export function DiagnosisSheet({
                 Remind me
               </button>
             </div>
+
+            {result.schedule_adjustment && (
+              <div
+                className="flex items-center gap-[var(--space-3)]"
+                style={{ border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)", padding: "var(--space-3)" }}
+              >
+                <ArrowsClockwise size={18} weight="regular" style={{ color: "var(--color-accent)", flex: "none" }} />
+                <p style={{ fontSize: 13, flex: 1, margin: 0 }}>
+                  {CARE_TYPE_COPY[result.schedule_adjustment.care_type]} will change to every{" "}
+                  <strong>{result.schedule_adjustment.suggested_interval_days} days</strong> when you save —{" "}
+                  {result.schedule_adjustment.reason}
+                </p>
+              </div>
+            )}
 
             <p className="text-tertiary" style={{ fontSize: 11 }}>
               AI-generated estimate from one photo. For a rare or valuable plant, get a specialist to look.

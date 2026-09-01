@@ -16,6 +16,7 @@ export async function createDiagnosis(
     urgency: result.urgency,
     treatmentSteps: result.treatment_steps ?? null,
     followUpDays: result.follow_up_days ?? null,
+    scheduleAdjustment: result.schedule_adjustment ?? null,
     rawAiResponse: result,
     createdAt: serverTimestamp(),
   });

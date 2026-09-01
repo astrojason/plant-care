@@ -39,11 +39,11 @@ export async function signInWithEmulator(
   role: "PENDING" | "USER" | "ADMIN" | "SUPERADMIN" = "USER"
 ) {
   await page.goto("/login");
-  await page.waitForSelector("button:has-text('Sign in with Google')");
+  await page.waitForSelector("button:has-text('Continue with Google')");
 
   const [popup] = await Promise.all([
     context.waitForEvent("page"),
-    page.click("button:has-text('Sign in with Google')"),
+    page.click("button:has-text('Continue with Google')"),
   ]);
 
   await popup.waitForLoadState();

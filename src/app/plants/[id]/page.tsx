@@ -45,6 +45,15 @@ const CARE_EVENT_LABELS: Record<CareEventType, string> = {
   other: "Other",
 };
 
+const SCHEDULE_FIELD_BY_CARE_TYPE: Record<
+  NonNullable<DiagnosisResult["schedule_adjustment"]>["care_type"],
+  "wateringIntervalDays" | "fertilizingIntervalDays" | "mistingIntervalDays"
+> = {
+  watering: "wateringIntervalDays",
+  fertilizing: "fertilizingIntervalDays",
+  misting: "mistingIntervalDays",
+};
+
 interface NearLimitState {
   tokensUsed: number;
   dailyLimit: number;
@@ -318,12 +327,23 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
   }
 
   async function handleSaveDiagnosis() {
-    if (!user || !diagnosisResult || !diagnosePhoto) return;
+    if (!user || !plant || !diagnosisResult || !diagnosePhoto) return;
     setDiagnosisSaving(true);
     setDiagnosisError(null);
     try {
       const photoId = await addPlantPhoto(user.uid, plantId, diagnosePhoto.path, diagnosePhoto.url, "diagnosis");
       await createDiagnosis(user.uid, plantId, photoId, diagnosisResult);
+
+      const adjustment = diagnosisResult.schedule_adjustment;
+      if (adjustment) {
+        await updateCareSchedule(user.uid, plantId, {
+          wateringIntervalDays: plant.wateringIntervalDays,
+          fertilizingIntervalDays: plant.fertilizingIntervalDays,
+          mistingIntervalDays: plant.mistingIntervalDays,
+          [SCHEDULE_FIELD_BY_CARE_TYPE[adjustment.care_type]]: adjustment.suggested_interval_days,
+        });
+      }
+
       setDiagnosisSaved(true);
     } catch (err) {
       setDiagnosisError(err);
@@ -353,7 +373,9 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
   const urgent = getMostUrgentTask(plant);
   let statusText: string | null = null;
   if (urgent) {
-    if (urgent.daysPastDue >= 1) {
+    if (!Number.isFinite(urgent.daysPastDue)) {
+      statusText = `${urgent.label} overdue · never logged`;
+    } else if (urgent.daysPastDue >= 1) {
       const days = Math.floor(urgent.daysPastDue);
       statusText = `${urgent.label} overdue · ${days} day${days === 1 ? "" : "s"}`;
     } else if (urgent.daysPastDue >= 0) {

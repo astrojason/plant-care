@@ -13,6 +13,7 @@ const ROWS: {
 
 function formatNote(past: number | null): { text: string; accent: boolean } {
   if (past === null) return { text: "not tracked", accent: false };
+  if (!Number.isFinite(past)) return { text: "never logged", accent: true };
   if (past >= 0) {
     const days = Math.max(1, Math.round(past));
     return { text: `${days} day${days === 1 ? "" : "s"} late`, accent: true };

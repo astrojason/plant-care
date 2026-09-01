@@ -29,5 +29,12 @@ export const DiagnosisResultSchema = z.object({
   urgency: z.enum(["low", "medium", "high"]),
   treatment_steps: z.array(z.object({ action: z.string(), timing: z.string() })).nullable(),
   follow_up_days: z.number().int().positive().nullable(),
+  schedule_adjustment: z
+    .object({
+      care_type: z.enum(["watering", "fertilizing", "misting"]),
+      suggested_interval_days: z.number().int().positive(),
+      reason: z.string(),
+    })
+    .nullable(),
 });
 export type DiagnosisResult = z.infer<typeof DiagnosisResultSchema>;

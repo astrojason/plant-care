@@ -29,6 +29,13 @@ const MOCK_FIXTURES: Record<string, unknown> = {
     ],
     suggested_treatment: "Let the soil dry out between waterings.",
     urgency: "medium",
+    treatment_steps: null,
+    follow_up_days: null,
+    schedule_adjustment: {
+      care_type: "watering",
+      suggested_interval_days: 10,
+      reason: "E2E mock fixture — overwatering detected, so watering less often.",
+    },
   },
 };
 

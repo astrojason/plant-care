@@ -34,6 +34,7 @@ function plantIsOverdue(plant: Plant, now: Date): boolean {
 function nextDueText(plant: Plant, now: Date): { text: string; accent: boolean } {
   const urgent = getMostUrgentTask(plant, now);
   if (!urgent) return { text: "Not tracked", accent: false };
+  if (!Number.isFinite(urgent.daysPastDue)) return { text: "Never logged", accent: true };
   if (urgent.daysPastDue >= 1) {
     const days = Math.floor(urgent.daysPastDue);
     return { text: `${days}d overdue`, accent: true };

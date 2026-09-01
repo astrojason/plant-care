@@ -319,6 +319,35 @@ describe("PlantDetailPage", () => {
     expect(mockCreateDiagnosis).toHaveBeenCalledWith("user-1", "plant-1", "photo-1", DIAGNOSIS_RESULT);
   });
 
+  it("applies a diagnosis's suggested schedule adjustment to the care plan on save", async () => {
+    const resultWithAdjustment = {
+      ...DIAGNOSIS_RESULT,
+      schedule_adjustment: {
+        care_type: "watering" as const,
+        suggested_interval_days: 12,
+        reason: "Overwatering detected.",
+      },
+    };
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ result: resultWithAdjustment }) });
+    mockAddPlantPhoto.mockResolvedValue("photo-1");
+    mockCreateDiagnosis.mockResolvedValue(undefined);
+    mockUpdateCareSchedule.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderAndLoadPlant();
+
+    await user.click(screen.getByRole("button", { name: "Something looks wrong" }));
+    await user.click(screen.getByRole("button", { name: "Fake diagnose upload" }));
+    await screen.findByText(/will change to every/i);
+
+    await user.click(screen.getByRole("button", { name: "Save to plant" }));
+
+    expect(mockUpdateCareSchedule).toHaveBeenCalledWith("user-1", "plant-1", {
+      wateringIntervalDays: 12,
+      fertilizingIntervalDays: 30,
+      mistingIntervalDays: null,
+    });
+  });
+
   it("shows a confirm dialog when the diagnose call is near the token limit", async () => {
     mockFetch
       .mockResolvedValueOnce({

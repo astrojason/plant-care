@@ -26,6 +26,7 @@ function makeResult(overrides: Partial<DiagnosisResult> = {}): DiagnosisResult {
     urgency: "medium",
     treatment_steps: null,
     follow_up_days: null,
+    schedule_adjustment: null,
     ...overrides,
   };
 }

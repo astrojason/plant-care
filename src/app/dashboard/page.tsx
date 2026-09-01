@@ -231,7 +231,7 @@ function DashboardContent() {
                     {task.plant.nickname}
                   </span>
                   <span className="text-secondary" style={{ fontSize: 12 }}>
-                    {days >= 1 ? `${days} day${days === 1 ? "" : "s"} overdue` : "Due today"}
+                    {!Number.isFinite(days) ? "Never logged" : days >= 1 ? `${days} day${days === 1 ? "" : "s"} overdue` : "Due today"}
                   </span>
                 </div>
                 <button
