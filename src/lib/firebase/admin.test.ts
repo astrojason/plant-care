@@ -12,7 +12,7 @@ const mockSetCustomUserClaims = vi.fn();
 const mockGetUserByEmail = vi.fn();
 const mockGetUser = vi.fn();
 const mockListUsers = vi.fn();
-const mockGetAuth = vi.fn(() => ({
+const mockGetAuth = vi.fn<(...args: unknown[]) => unknown>(() => ({
   verifyIdToken: mockVerifyIdToken,
   setCustomUserClaims: mockSetCustomUserClaims,
   getUserByEmail: mockGetUserByEmail,

@@ -7,7 +7,7 @@ vi.mock("@/lib/media/imageProcessing", () => ({
   prepareImageForUpload: (...args: unknown[]) => mockPrepareImageForUpload(...args),
 }));
 
-const mockRef = vi.fn(() => ({ __ref: true }));
+const mockRef = vi.fn<(...args: unknown[]) => unknown>(() => ({ __ref: true }));
 const mockUploadBytes = vi.fn();
 const mockGetDownloadURL = vi.fn();
 vi.mock("firebase/storage", () => ({
