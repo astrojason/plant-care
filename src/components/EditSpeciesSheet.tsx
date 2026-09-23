@@ -11,10 +11,12 @@ export interface SpeciesFormValues {
 
 export function EditSpeciesSheet({
   initial,
+  locations,
   onSave,
   onCancel,
 }: {
   initial: SpeciesFormValues;
+  locations: string[];
   onSave: (values: SpeciesFormValues) => void;
   onCancel: () => void;
 }) {
@@ -58,12 +60,19 @@ export function EditSpeciesSheet({
           </div>
           <div className="field">
             <label htmlFor="species-location">Location</label>
-            <input
+            <select
               id="species-location"
               className="input"
               value={values.location}
               onChange={(e) => update("location", e.target.value)}
-            />
+            >
+              <option value="">No location</option>
+              {Array.from(new Set([...locations, ...(values.location ? [values.location] : [])])).map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="dialog-actions">

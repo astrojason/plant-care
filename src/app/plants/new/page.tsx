@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, onSnapshot, type DocumentData, type QuerySnapshot } from "firebase/firestore";
 import { ArrowLeft, Sparkle, Drop, Flask, CloudFog } from "@phosphor-icons/react";
-import { db } from "@/lib/firebase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AppShell } from "@/components/AppShell";
@@ -15,10 +13,9 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { createPlant } from "@/lib/firestore/plants";
 import { addPlantPhoto } from "@/lib/firestore/photos";
 import { parseJsonResponse } from "@/lib/api/parseJsonResponse";
-import { mapPlantDoc } from "@/lib/firestore/mappers";
+import { useLocations } from "@/lib/firestore/locations";
 import type { IdentificationResult } from "@/lib/openai/schemas";
 
-const DEFAULT_LOCATIONS = ["Living room", "Bedroom", "Kitchen", "Office", "Bathroom"];
 const LOW_CONFIDENCE_THRESHOLD = 0.5;
 
 interface NearLimitState {
@@ -53,27 +50,12 @@ function AddPlantContent() {
   const [error, setError] = useState<unknown>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<NearLimitState | null>(null);
   const [values, setValues] = useState<FormValues | null>(null);
-  const [knownLocations, setKnownLocations] = useState<string[]>([]);
   const [correcting, setCorrecting] = useState(false);
   const [correctionText, setCorrectionText] = useState("");
   const [correctedName, setCorrectedName] = useState<string | null>(null);
   const [pendingSpecies, setPendingSpecies] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    if (!user) return;
-    const unsubscribe = onSnapshot(
-      collection(db, "users", user.uid, "plants"),
-      (snapshot: QuerySnapshot<DocumentData>) => {
-        const locations = snapshot.docs
-          .map((d) => mapPlantDoc(d.id, d.data()).location)
-          .filter((l): l is string => Boolean(l));
-        setKnownLocations(Array.from(new Set(locations)));
-      }
-    );
-    return unsubscribe;
-  }, [user]);
-
-  const locationOptions = Array.from(new Set([...knownLocations, ...DEFAULT_LOCATIONS]));
+  const locationOptions = useLocations(user?.uid);
 
   async function runIdentify(photoUrl: string, confirmNearLimit = false, speciesName?: string) {
     if (!user) return;

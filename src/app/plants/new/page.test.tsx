@@ -43,6 +43,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("firebase/firestore", () => ({
+  doc: vi.fn(() => ({ __doc: true })),
   collection: vi.fn(() => ({ __collection: true })),
   onSnapshot: vi.fn(() => vi.fn()),
 }));

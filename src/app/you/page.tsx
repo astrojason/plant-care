@@ -1,19 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
-import { User, Gear, SignOut } from "@phosphor-icons/react";
+import { User, Gear, MapPin, SignOut } from "@phosphor-icons/react";
 import { auth } from "@/lib/firebase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AppShell } from "@/components/AppShell";
+import { ManageLocationsSheet } from "@/components/ManageLocationsSheet";
+import { renameLocation, saveLocations, useLocations } from "@/lib/firestore/locations";
 import { isAdminRole } from "@/lib/firebase/roles";
 import pkg from "../../../package.json";
 
 function YouContent() {
   const { user, role } = useAuth();
   const router = useRouter();
+  const locations = useLocations(user?.uid);
+  const [managingLocations, setManagingLocations] = useState(false);
 
   async function handleSignOut() {
     await signOut(auth);
@@ -56,6 +61,15 @@ function YouContent() {
         )}
         <button
           type="button"
+          onClick={() => setManagingLocations(true)}
+          className="flex items-center gap-[var(--space-3)] row-rule"
+          style={{ padding: "12px 4px", background: "none", border: 0, cursor: "pointer", textAlign: "left", width: "100%" }}
+        >
+          <MapPin size={16} weight="regular" style={{ color: "var(--color-accent)" }} />
+          <span style={{ fontSize: 14 }}>Manage locations</span>
+        </button>
+        <button
+          type="button"
           onClick={handleSignOut}
           className="flex items-center gap-[var(--space-3)] row-rule"
           style={{ padding: "12px 4px", background: "none", border: 0, cursor: "pointer", textAlign: "left", width: "100%" }}
@@ -64,6 +78,16 @@ function YouContent() {
           <span style={{ fontSize: 14 }}>Sign out</span>
         </button>
       </div>
+
+      {managingLocations && user && (
+        <ManageLocationsSheet
+          locations={locations}
+          onAdd={(name) => saveLocations(user.uid, [...locations, name])}
+          onRename={(from, to) => renameLocation(user.uid, locations, from, to)}
+          onRemove={(name) => saveLocations(user.uid, locations.filter((l) => l !== name))}
+          onClose={() => setManagingLocations(false)}
+        />
+      )}
 
       <Link href="/changelog" className="text-tertiary" style={{ fontSize: 11 }}>
         Plant Care v{pkg.version}

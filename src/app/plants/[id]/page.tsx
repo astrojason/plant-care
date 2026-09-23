@@ -24,6 +24,7 @@ import type { UploadedPhoto } from "@/components/PhotoUploader";
 import { getMostUrgentTask } from "@/lib/care/schedule";
 import { deleteCareEvent, logCareEvent } from "@/lib/care/log";
 import { deletePlant, deletePlantPhoto, updateCareSchedule, updatePlantSpecies } from "@/lib/firestore/plants";
+import { useLocations } from "@/lib/firestore/locations";
 import { addPlantPhoto } from "@/lib/firestore/photos";
 import { createDiagnosis, deleteDiagnosis } from "@/lib/firestore/diagnoses";
 import { addSoilTest, deleteSoilTest } from "@/lib/firestore/soilTests";
@@ -203,6 +204,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     );
   }, [careEvents, diagnoses, soilTests]);
 
+  const locations = useLocations(user?.uid);
   const viewingDiagnosis = diagnoses.find((d) => d.id === viewingDiagnosisId) ?? null;
 
   async function handleLog(eventType: "watered" | "fertilized" | "misted") {
@@ -620,6 +622,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
             speciesScientificName: plant.speciesScientificName ?? "",
             location: plant.location ?? "",
           }}
+          locations={locations}
           onSave={handleSaveSpecies}
           onCancel={() => setSheet("none")}
         />
