@@ -18,6 +18,7 @@ import { ErrorBlock } from "@/components/ErrorBlock";
 import { DiagnosisSheet } from "@/components/DiagnosisSheet";
 import { EditSpeciesSheet, type SpeciesFormValues } from "@/components/EditSpeciesSheet";
 import { EditScheduleSheet, type ScheduleFormValues } from "@/components/EditScheduleSheet";
+import { RecommendedScheduleSheet } from "@/components/RecommendedScheduleSheet";
 import { LogSoilTestSheet, type SoilTestFormValues } from "@/components/LogSoilTestSheet";
 import type { UploadedPhoto } from "@/components/PhotoUploader";
 import { getMostUrgentTask } from "@/lib/care/schedule";
@@ -36,7 +37,7 @@ import {
   mapSoilTestDoc,
 } from "@/lib/firestore/mappers";
 import type { CareEvent, CareEventType, Diagnosis, Plant, PlantPhoto, SoilTest } from "@/lib/types/plant";
-import type { DiagnosisResult } from "@/lib/openai/schemas";
+import type { DiagnosisResult, IdentificationResult } from "@/lib/openai/schemas";
 
 const CARE_EVENT_LABELS: Record<CareEventType, string> = {
   watered: "Watered",
@@ -61,7 +62,7 @@ interface NearLimitState {
   photoPath: string;
 }
 
-type Sheet = "none" | "diagnosis" | "species" | "schedule" | "soilTest";
+type Sheet = "none" | "diagnosis" | "species" | "schedule" | "recommendedSchedule" | "soilTest";
 
 function summarizeSoilTest(test: SoilTest): string {
   const parts: string[] = [];
@@ -94,6 +95,14 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
   const [diagnosisSaved, setDiagnosisSaved] = useState(false);
   const [diagnosisError, setDiagnosisError] = useState<unknown>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<NearLimitState | null>(null);
+
+  const [recommended, setRecommended] = useState<ScheduleFormValues | null>(null);
+  const [recommending, setRecommending] = useState(false);
+  const [recommendApplying, setRecommendApplying] = useState(false);
+  const [recommendError, setRecommendError] = useState<unknown>(null);
+  const [recommendConfirmation, setRecommendConfirmation] = useState<
+    { tokensUsed: number; dailyLimit: number } | null
+  >(null);
 
   useEffect(() => {
     if (!user) return;
@@ -259,6 +268,64 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
       setSheet("none");
     } catch (err) {
       setError(err);
+    }
+  }
+
+  async function runRecommend(confirmNearLimit = false) {
+    if (!user || !plant) return;
+    setRecommendError(null);
+    setRecommending(true);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/identify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          photoUrl: plant.primaryPhotoUrl,
+          confirmNearLimit,
+          // Trust the species already saved (or corrected) on the plant rather than re-guessing from the photo.
+          speciesName: plant.speciesScientificName || plant.speciesCommonName || undefined,
+        }),
+      });
+      const json = await parseJsonResponse(res);
+      if (!res.ok) {
+        throw new Error(json?.error?.message ?? `Request failed with status ${res.status}`);
+      }
+      if (json.requiresConfirmation) {
+        setRecommendConfirmation({ tokensUsed: json.tokensUsed, dailyLimit: json.dailyLimit });
+        return;
+      }
+      const result = json.result as IdentificationResult;
+      setRecommended({
+        wateringIntervalDays: result.suggested_watering_interval_days,
+        fertilizingIntervalDays: result.suggested_fertilizing_interval_days,
+        mistingIntervalDays: result.suggested_misting_interval_days,
+      });
+    } catch (err) {
+      setRecommendError(err);
+    } finally {
+      setRecommending(false);
+    }
+  }
+
+  function openRecommendedSchedule() {
+    setOverflowOpen(false);
+    setRecommended(null);
+    setRecommendError(null);
+    setSheet("recommendedSchedule");
+    void runRecommend();
+  }
+
+  async function handleApplyRecommended() {
+    if (!user || !recommended) return;
+    setRecommendApplying(true);
+    try {
+      await updateCareSchedule(user.uid, plantId, recommended);
+      setSheet("none");
+    } catch (err) {
+      setRecommendError(err);
+    } finally {
+      setRecommendApplying(false);
     }
   }
 
@@ -448,6 +515,9 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
                 >
                   Edit schedule
                 </button>
+                <button type="button" className="overflow-menu-item" onClick={openRecommendedSchedule}>
+                  Update recommended schedule
+                </button>
                 <button
                   type="button"
                   className="overflow-menu-item"
@@ -544,6 +614,23 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
         />
       )}
 
+      {sheet === "recommendedSchedule" && (
+        <RecommendedScheduleSheet
+          speciesLabel={plant.speciesCommonName || plant.speciesScientificName}
+          current={{
+            wateringIntervalDays: plant.wateringIntervalDays,
+            fertilizingIntervalDays: plant.fertilizingIntervalDays,
+            mistingIntervalDays: plant.mistingIntervalDays,
+          }}
+          suggested={recommended}
+          loading={recommending}
+          saving={recommendApplying}
+          error={recommendError}
+          onApply={handleApplyRecommended}
+          onCancel={() => setSheet("none")}
+        />
+      )}
+
       {sheet === "soilTest" && (
         <LogSoilTestSheet onSave={handleSaveSoilTest} onCancel={() => setSheet("none")} />
       )}
@@ -555,6 +642,25 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
         confirmLabel="Delete"
         onConfirm={handleDeletePlant}
         onCancel={() => setConfirmDeletePlant(false)}
+      />
+
+      <ConfirmDialog
+        open={recommendConfirmation !== null}
+        title="Near today's AI budget"
+        description={
+          recommendConfirmation
+            ? `${recommendConfirmation.tokensUsed.toLocaleString()} / ${recommendConfirmation.dailyLimit.toLocaleString()} tokens used today (across all apps). Proceed anyway?`
+            : undefined
+        }
+        confirmLabel="Proceed"
+        onConfirm={() => {
+          setRecommendConfirmation(null);
+          void runRecommend(true);
+        }}
+        onCancel={() => {
+          setRecommendConfirmation(null);
+          setSheet("none");
+        }}
       />
 
       <ConfirmDialog

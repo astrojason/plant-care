@@ -252,6 +252,47 @@ describe("PlantDetailPage", () => {
     );
   });
 
+  it("fetches recommended intervals for the saved species and applies them", async () => {
+    mockUpdateCareSchedule.mockResolvedValue(undefined);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        result: {
+          species_common_name: "Fiddle Leaf Fig",
+          species_scientific_name: "Ficus lyrata",
+          confidence: 1,
+          care_summary: { light: "", water_frequency_guidance: "", humidity: "", notes: "" },
+          suggested_watering_interval_days: 10,
+          suggested_fertilizing_interval_days: 45,
+          suggested_misting_interval_days: 4,
+        },
+      }),
+    });
+    const user = userEvent.setup();
+    renderAndLoadPlant();
+
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("button", { name: "Update recommended schedule" }));
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/identify",
+      expect.objectContaining({
+        body: JSON.stringify({
+          photoUrl: "https://x/y.jpg",
+          confirmNearLimit: false,
+          speciesName: "Ficus lyrata",
+        }),
+      })
+    );
+    await user.click(await screen.findByRole("button", { name: "Apply" }));
+
+    expect(mockUpdateCareSchedule).toHaveBeenCalledWith("user-1", "plant-1", {
+      wateringIntervalDays: 10,
+      fertilizingIntervalDays: 45,
+      mistingIntervalDays: 4,
+    });
+  });
+
   it("logs a soil test with pH, moisture, and light from the overflow menu's sheet", async () => {
     mockAddSoilTest.mockResolvedValue(undefined);
     const user = userEvent.setup();
