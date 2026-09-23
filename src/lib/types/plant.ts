@@ -1,3 +1,5 @@
+import type { DiagnosisResult } from "@/lib/openai/schemas";
+
 export type CareEventType = "watered" | "fertilized" | "misted" | "other";
 export type PhotoType = "identification" | "diagnosis" | "general";
 export type DiagnosisUrgency = "low" | "medium" | "high";
@@ -48,6 +50,8 @@ export interface Diagnosis {
   detectedIssues: DetectedIssue[];
   suggestedTreatment: string;
   urgency: DiagnosisUrgency;
+  /** The full saved AI result; null for any diagnosis saved without it. */
+  result: DiagnosisResult | null;
   createdAt: Date;
 }
 

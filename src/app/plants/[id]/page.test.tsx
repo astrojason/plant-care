@@ -369,6 +369,37 @@ describe("PlantDetailPage", () => {
     expect(mockDeleteDiagnosis).toHaveBeenCalledWith("user-1", "plant-1", "diag-1");
   });
 
+  it("opens a saved diagnosis from history in a read-only sheet", async () => {
+    const user = userEvent.setup();
+    render(<PlantDetailPage />);
+    act(() => {
+      subscriptions[0]?.onNext(plantSnapshot());
+      subscriptions[1]?.onNext({ docs: [] });
+      subscriptions[2]?.onNext({
+        docs: [
+          {
+            id: "diag-1",
+            data: () => ({
+              photoId: null,
+              detectedIssues: [],
+              suggestedTreatment: "Water more consistently.",
+              urgency: "low",
+              rawAiResponse: DIAGNOSIS_RESULT,
+              createdAt: ts(new Date("2026-06-25")),
+            }),
+          },
+        ],
+      });
+      subscriptions[3]?.onNext({ docs: [] });
+      subscriptions[4]?.onNext({ docs: [] });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Diagnosis" }));
+
+    expect(screen.getByText("Looks a bit thirsty.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /save to plant|saved/i })).not.toBeInTheDocument();
+  });
+
   it("runs a diagnosis from the footer CTA, shows the result, and saves it on request", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ result: DIAGNOSIS_RESULT }) });
     mockAddPlantPhoto.mockResolvedValue("photo-1");

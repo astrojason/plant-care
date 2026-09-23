@@ -94,6 +94,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
   const [diagnosisSaving, setDiagnosisSaving] = useState(false);
   const [diagnosisSaved, setDiagnosisSaved] = useState(false);
   const [diagnosisError, setDiagnosisError] = useState<unknown>(null);
+  const [viewingDiagnosisId, setViewingDiagnosisId] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<NearLimitState | null>(null);
 
   const [recommended, setRecommended] = useState<ScheduleFormValues | null>(null);
@@ -201,6 +202,8 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
       (a, b) => b.date.getTime() - a.date.getTime()
     );
   }, [careEvents, diagnoses, soilTests]);
+
+  const viewingDiagnosis = diagnoses.find((d) => d.id === viewingDiagnosisId) ?? null;
 
   async function handleLog(eventType: "watered" | "fertilized" | "misted") {
     if (!user) return;
@@ -565,7 +568,11 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
 
         <section>
           <h2 className="kicker mb-[var(--space-2)]">History</h2>
-          <HistoryList entries={historyEntries} onDelete={handleDeleteHistoryEntry} />
+          <HistoryList
+            entries={historyEntries}
+            onDelete={handleDeleteHistoryEntry}
+            onOpen={(entry) => setViewingDiagnosisId(entry.id)}
+          />
         </section>
 
         <button type="button" onClick={openDiagnoseSheet} className="btn btn-primary btn-block" style={{ minHeight: 46 }}>
@@ -586,6 +593,22 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
           onPhotoUploaded={handleDiagnosePhotoUploaded}
           onClose={() => setSheet("none")}
           onSave={handleSaveDiagnosis}
+        />
+      )}
+
+      {viewingDiagnosis?.result && (
+        <DiagnosisSheet
+          plantName={plant.nickname}
+          pathPrefix={`users/${user?.uid}/plants/${plantId}`}
+          photoUrl={photos.find((p) => p.id === viewingDiagnosis.photoId)?.downloadUrl ?? null}
+          diagnosing={false}
+          result={viewingDiagnosis.result}
+          saving={false}
+          saved
+          readOnly
+          onPhotoUploaded={() => {}}
+          onClose={() => setViewingDiagnosisId(null)}
+          onSave={() => {}}
         />
       )}
 

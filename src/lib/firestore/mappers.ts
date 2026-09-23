@@ -1,4 +1,5 @@
 import type { Timestamp, DocumentData } from "firebase/firestore";
+import type { DiagnosisResult } from "@/lib/openai/schemas";
 import type { CareEvent, DetectedIssue, Diagnosis, Plant, PlantPhoto, SoilTest } from "@/lib/types/plant";
 
 function toDateOrNull(value: Timestamp | null | undefined): Date | null {
@@ -62,6 +63,7 @@ export function mapDiagnosisDoc(id: string, data: DocumentData): Diagnosis {
     detectedIssues: (data.detectedIssues ?? []) as DetectedIssue[],
     suggestedTreatment: data.suggestedTreatment,
     urgency: data.urgency,
+    result: (data.rawAiResponse ?? null) as DiagnosisResult | null,
     createdAt: toDateOrNull(data.createdAt) ?? new Date(),
   };
 }

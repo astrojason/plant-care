@@ -125,6 +125,7 @@ describe("mapDiagnosisDoc", () => {
       detectedIssues: [{ issue: "Overwatering", confidence: 0.7, symptomsObserved: ["Yellow leaves"] }],
       suggestedTreatment: "Water less often.",
       urgency: "medium",
+      rawAiResponse: { overall_assessment: "Too wet." },
       createdAt: ts(new Date("2026-06-25T10:00:00Z")),
     });
 
@@ -134,6 +135,7 @@ describe("mapDiagnosisDoc", () => {
       detectedIssues: [{ issue: "Overwatering", confidence: 0.7, symptomsObserved: ["Yellow leaves"] }],
       suggestedTreatment: "Water less often.",
       urgency: "medium",
+      result: { overall_assessment: "Too wet." },
       createdAt: new Date("2026-06-25T10:00:00Z"),
     });
   });

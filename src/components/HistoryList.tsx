@@ -30,10 +30,12 @@ function HistoryRow({
   entry,
   odd,
   onRequestDelete,
+  onOpen,
 }: {
   entry: HistoryEntry;
   odd: boolean;
   onRequestDelete: (id: string) => void;
+  onOpen?: (entry: HistoryEntry) => void;
 }) {
   const [swipeX, setSwipeX] = useState(0);
   const dragRef = useRef<{ startX: number; base: number } | null>(null);
@@ -95,7 +97,18 @@ function HistoryRow({
                 : "color-mix(in srgb, var(--color-text) 50%, transparent)",
           }}
         />
-        <span className="flex-1 text-sm">{entry.label}</span>
+        {onOpen && entry.kind === "diagnosis" ? (
+          <button
+            type="button"
+            className="flex-1 text-sm"
+            style={{ textAlign: "left", background: "none", border: 0, padding: 0, color: "inherit", cursor: "pointer" }}
+            onClick={() => onOpen(entry)}
+          >
+            {entry.label}
+          </button>
+        ) : (
+          <span className="flex-1 text-sm">{entry.label}</span>
+        )}
         <span className="text-xs" style={{ color: "color-mix(in srgb, var(--color-text) 45%, transparent)" }}>
           {entry.date.toLocaleDateString()}
         </span>
@@ -110,9 +123,11 @@ function HistoryRow({
 export function HistoryList({
   entries,
   onDelete,
+  onOpen,
 }: {
   entries: HistoryEntry[];
   onDelete: (entry: HistoryEntry) => Promise<void>;
+  onOpen?: (entry: HistoryEntry) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -139,7 +154,7 @@ export function HistoryList({
   return (
     <div className="flex flex-col">
       {visible.map((entry, i) => (
-        <HistoryRow key={entry.id} entry={entry} odd={i % 2 === 1} onRequestDelete={setPendingDeleteId} />
+        <HistoryRow key={entry.id} entry={entry} odd={i % 2 === 1} onRequestDelete={setPendingDeleteId} onOpen={onOpen} />
       ))}
       {!expanded && entries.length > 2 && (
         <button

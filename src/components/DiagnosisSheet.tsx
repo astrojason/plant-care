@@ -33,6 +33,7 @@ export function DiagnosisSheet({
   result,
   saving,
   saved,
+  readOnly = false,
   error,
   onPhotoUploaded,
   onClose,
@@ -45,6 +46,8 @@ export function DiagnosisSheet({
   result: DiagnosisResult | null;
   saving: boolean;
   saved: boolean;
+  /** Viewing a previously saved diagnosis: hides the follow-up / save actions. */
+  readOnly?: boolean;
   error?: unknown;
   onPhotoUploaded: (photo: UploadedPhoto) => void;
   onClose: () => void;
@@ -188,7 +191,7 @@ export function DiagnosisSheet({
               </button>
             </div>
 
-            {result.schedule_adjustment && (
+            {result.schedule_adjustment && !readOnly && (
               <div
                 className="flex items-center gap-[var(--space-3)]"
                 style={{ border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)", padding: "var(--space-3)" }}
@@ -208,6 +211,7 @@ export function DiagnosisSheet({
 
             {error !== undefined && error !== null && <ErrorBlock error={error} title="Failed to save diagnosis" />}
 
+            {!readOnly && (
             <div className="dialog-actions" style={{ justifyContent: "space-between" }}>
               <button type="button" className="btn btn-secondary" disabled title="Not available yet">
                 Ask a follow-up
@@ -216,6 +220,7 @@ export function DiagnosisSheet({
                 {saved ? "Saved" : saving ? "Saving…" : "Save to plant"}
               </button>
             </div>
+            )}
           </div>
         )}
       </div>
