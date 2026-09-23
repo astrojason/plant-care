@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildDiagnoseUserPrompt, DIAGNOSE_USER_PROMPT } from "./prompts";
+import {
+  buildDiagnoseUserPrompt,
+  buildIdentifyUserPrompt,
+  DIAGNOSE_USER_PROMPT,
+  IDENTIFY_USER_PROMPT,
+} from "./prompts";
 
 describe("buildDiagnoseUserPrompt", () => {
   it("returns the base prompt when there is no soil test", () => {
@@ -24,5 +29,16 @@ describe("buildDiagnoseUserPrompt", () => {
     const prompt = buildDiagnoseUserPrompt({ ph: 6.5, moistureLevel: null, lightLevel: null });
 
     expect(prompt).toBe(`${DIAGNOSE_USER_PROMPT} Most recent soil meter reading: pH 6.5.`);
+  });
+});
+
+describe("buildIdentifyUserPrompt", () => {
+  it("returns the base prompt when there is no species name", () => {
+    expect(buildIdentifyUserPrompt()).toBe(IDENTIFY_USER_PROMPT);
+    expect(buildIdentifyUserPrompt("   ")).toBe(IDENTIFY_USER_PROMPT);
+  });
+
+  it("tells the model to treat the user's species name as correct", () => {
+    expect(buildIdentifyUserPrompt(" Snake plant ")).toContain('"Snake plant"');
   });
 });

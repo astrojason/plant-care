@@ -54,6 +54,10 @@ function AddPlantContent() {
   const [pendingConfirmation, setPendingConfirmation] = useState<NearLimitState | null>(null);
   const [values, setValues] = useState<FormValues | null>(null);
   const [knownLocations, setKnownLocations] = useState<string[]>([]);
+  const [correcting, setCorrecting] = useState(false);
+  const [correctionText, setCorrectionText] = useState("");
+  const [correctedName, setCorrectedName] = useState<string | null>(null);
+  const [pendingSpecies, setPendingSpecies] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!user) return;
@@ -71,7 +75,7 @@ function AddPlantContent() {
 
   const locationOptions = Array.from(new Set([...knownLocations, ...DEFAULT_LOCATIONS]));
 
-  async function runIdentify(photoUrl: string, confirmNearLimit = false) {
+  async function runIdentify(photoUrl: string, confirmNearLimit = false, speciesName?: string) {
     if (!user) return;
     setError(null);
     setIdentifying(true);
@@ -80,27 +84,37 @@ function AddPlantContent() {
       const res = await fetch("/api/identify", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ photoUrl, confirmNearLimit }),
+        body: JSON.stringify({ photoUrl, confirmNearLimit, speciesName }),
       });
       const json = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(json?.error?.message ?? `Request failed with status ${res.status}`);
       }
       if (json.requiresConfirmation) {
+        setPendingSpecies(speciesName);
         setPendingConfirmation({ tokensUsed: json.tokensUsed, dailyLimit: json.dailyLimit });
         return;
       }
       const result = json.result as IdentificationResult;
+      const previousCommonName = identification?.species_common_name;
       setIdentification(result);
-      setValues({
-        nickname: result.species_common_name || "My Plant",
+      setCorrectedName(speciesName ?? null);
+      setCorrecting(false);
+      setCorrectionText("");
+      // A correction re-suggests species and care only; keep the location and any nickname the user
+      // already customised (i.e. one that isn't just the old guess).
+      setValues((prev) => ({
+        nickname:
+          prev && prev.nickname !== previousCommonName
+            ? prev.nickname
+            : result.species_common_name || "My Plant",
         speciesCommonName: result.species_common_name,
         speciesScientificName: result.species_scientific_name,
         wateringIntervalDays: result.suggested_watering_interval_days,
         fertilizingIntervalDays: result.suggested_fertilizing_interval_days,
         mistingIntervalDays: result.suggested_misting_interval_days,
-        location: null,
-      });
+        location: prev?.location ?? null,
+      }));
     } catch (err) {
       setError(err);
     } finally {
@@ -112,13 +126,21 @@ function AddPlantContent() {
     setPhoto(uploaded);
     setIdentification(null);
     setValues(null);
+    setCorrecting(false);
+    setCorrectedName(null);
     await runIdentify(uploaded.downloadUrl);
   }
 
   async function handleConfirmNearLimit() {
     if (!photo) return;
     setPendingConfirmation(null);
-    await runIdentify(photo.downloadUrl, true);
+    await runIdentify(photo.downloadUrl, true, pendingSpecies);
+  }
+
+  async function handleCorrectionSubmit() {
+    const name = correctionText.trim();
+    if (!photo || !name) return;
+    await runIdentify(photo.downloadUrl, false, name);
   }
 
   function handleRetake() {
@@ -126,6 +148,8 @@ function AddPlantContent() {
     setIdentification(null);
     setValues(null);
     setError(null);
+    setCorrecting(false);
+    setCorrectedName(null);
   }
 
   async function handleSave() {
@@ -191,14 +215,60 @@ function AddPlantContent() {
             <div className="flex flex-col gap-1">
               <span className="flex items-center gap-1 kicker">
                 <Sparkle size={12} weight="fill" />
-                Identified
+                {correctedName ? "Corrected" : "Identified"}
               </span>
               <span style={{ fontSize: 20, fontWeight: 500 }}>{identification.species_scientific_name}</span>
               <span className="text-secondary" style={{ fontSize: 12 }}>
-                {identification.species_common_name} · {Math.round(identification.confidence * 100)}% confident
+                {identification.species_common_name}
+                {correctedName ? " · set by you" : ` · ${Math.round(identification.confidence * 100)}% confident`}
               </span>
+              {!correcting && (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ alignSelf: "flex-start", padding: 0, fontSize: 12 }}
+                  onClick={() => {
+                    setCorrectionText(correctedName ?? identification.species_common_name);
+                    setCorrecting(true);
+                  }}
+                >
+                  Not this plant? Correct it
+                </button>
+              )}
             </div>
           </div>
+
+          {correcting && (
+            <form
+              className="field"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleCorrectionSubmit();
+              }}
+            >
+              <label htmlFor="add-plant-correct-species">What plant is this?</label>
+              <input
+                id="add-plant-correct-species"
+                className="input"
+                value={correctionText}
+                placeholder="e.g. Snake plant or Sansevieria trifasciata"
+                onChange={(e) => setCorrectionText(e.target.value)}
+                autoFocus
+              />
+              <div className="flex gap-[var(--space-2)]">
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={identifying || correctionText.trim().length === 0}
+                >
+                  {identifying ? "Updating…" : "Update plant"}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setCorrecting(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
 
           <div className="flex flex-col gap-[var(--space-2)]">
             <div style={{ height: 3, borderRadius: 2, background: "color-mix(in srgb, var(--color-text) 12%, transparent)" }}>
@@ -211,7 +281,7 @@ function AddPlantContent() {
                 }}
               />
             </div>
-            {identification.confidence < LOW_CONFIDENCE_THRESHOLD && (
+            {!correctedName && identification.confidence < LOW_CONFIDENCE_THRESHOLD && (
               <p style={{ fontSize: 12, color: "var(--color-accent-300)", margin: 0 }}>
                 Low confidence — double-check the details below, or retake the photo.
               </p>

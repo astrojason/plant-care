@@ -137,6 +137,38 @@ describe("AddPlantPage", () => {
     expect(await screen.findByRole("button", { name: /save plant/i })).toBeInTheDocument();
   });
 
+  it("re-identifies with the typed species name and applies the new care intervals", async () => {
+    const SNAKE_PLANT = {
+      ...IDENTIFICATION_RESULT,
+      species_common_name: "Snake Plant",
+      species_scientific_name: "Dracaena trifasciata",
+      confidence: 1,
+      suggested_watering_interval_days: 21,
+    };
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ result: IDENTIFICATION_RESULT }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ result: SNAKE_PLANT }) });
+    const user = userEvent.setup();
+    render(<AddPlantPage />);
+
+    await user.click(screen.getByRole("button", { name: "Fake upload" }));
+    await user.click(await screen.findByRole("button", { name: /correct it/i }));
+    const input = screen.getByLabelText(/what plant is this/i);
+    await user.clear(input);
+    await user.type(input, "Snake plant");
+    await user.click(screen.getByRole("button", { name: /update plant/i }));
+
+    expect(mockFetch).toHaveBeenLastCalledWith(
+      "/api/identify",
+      expect.objectContaining({
+        body: JSON.stringify({ photoUrl: "https://x/photo.jpg", confirmNearLimit: false, speciesName: "Snake plant" }),
+      })
+    );
+    expect(await screen.findByText("Dracaena trifasciata")).toBeInTheDocument();
+    expect(screen.getByText(/set by you/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Nickname")).toHaveValue("Snake Plant");
+  });
+
   it("creates the plant and redirects to its detail page on save", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ result: IDENTIFICATION_RESULT }) });
     mockCreatePlant.mockResolvedValue("new-plant-id");

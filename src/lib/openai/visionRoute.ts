@@ -8,6 +8,8 @@ import { getOpenAIClient, VISION_MODEL } from "./client";
 export interface VisionRequestConfig<T> {
   systemPrompt: string;
   userPromptText: string;
+  /** Overrides userPromptText per request, given the optional `speciesName` from the payload. */
+  buildUserPromptText?: (speciesName: string | undefined) => string;
   schema: ZodType<T>;
   schemaName: string;
 }
@@ -38,7 +40,7 @@ export async function handleVisionRequest<T>(
     return authResult;
   }
 
-  let payload: { photoUrl?: unknown; confirmNearLimit?: unknown };
+  let payload: { photoUrl?: unknown; confirmNearLimit?: unknown; speciesName?: unknown };
   try {
     payload = await request.json();
   } catch (err) {
@@ -50,6 +52,10 @@ export async function handleVisionRequest<T>(
   }
   const photoUrl = payload.photoUrl;
   const confirmNearLimit = payload.confirmNearLimit === true;
+  const speciesName = typeof payload.speciesName === "string" ? payload.speciesName : undefined;
+  const userPromptText = config.buildUserPromptText
+    ? config.buildUserPromptText(speciesName)
+    : config.userPromptText;
 
   const gate = await checkTokenGate(confirmNearLimit);
   if (!gate.allowed) {
@@ -77,7 +83,7 @@ export async function handleVisionRequest<T>(
         {
           role: "user",
           content: [
-            { type: "text", text: config.userPromptText },
+            { type: "text", text: userPromptText },
             { type: "image_url", image_url: { url: photoUrl } },
           ],
         },
