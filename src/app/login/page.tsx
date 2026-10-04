@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { Leaf, GoogleLogo, Image as ImageIcon } from "@phosphor-icons/react";
+import { Leaf, GoogleLogo } from "@phosphor-icons/react";
 import { auth } from "@/lib/firebase/client";
 import { ErrorBlock } from "@/components/ErrorBlock";
 
@@ -28,9 +28,8 @@ export default function LoginPage() {
   return (
     <main className="flex flex-col" style={{ minHeight: "100dvh" }}>
       <div style={{ position: "relative", height: 460, flex: "none" }}>
-        <div className="lighten placeholder-tile" style={{ width: "100%", height: "100%" }}>
-          <ImageIcon size={48} weight="regular" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- static SVG illustration */}
+        <img src="/hero.svg" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         <div
           style={{
             position: "absolute",

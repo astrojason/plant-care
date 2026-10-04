@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 460" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="38%" r="60%">
+      <stop offset="0" stop-color="#9184d9" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#9184d9" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="460" fill="#1c1e2b"/>
+  <rect width="400" height="460" fill="url(#glow)"/>
+  <g fill="none" stroke="#a7a1db" stroke-width="3" stroke-linecap="round">
+    <path d="M200 440 C200 340 198 260 200 170" opacity=".9"/>
+    <path d="M200 330 C160 320 120 290 105 240" opacity=".7"/>
+    <path d="M200 290 C245 280 285 250 300 205" opacity=".7"/>
+  </g>
+  <g fill="#796cbf">
+    <path d="M200 170 C150 150 150 90 200 50 C250 90 250 150 200 170Z" opacity=".95"/>
+    <path d="M105 240 C60 235 40 190 50 150 C95 160 120 195 105 240Z" opacity=".8"/>
+    <path d="M300 205 C345 200 365 155 355 115 C310 125 285 160 300 205Z" opacity=".8"/>
+    <path d="M200 330 C170 345 130 340 110 310 C145 295 185 305 200 330Z" opacity=".6"/>
+    <path d="M200 290 C230 310 270 305 292 275 C255 262 215 268 200 290Z" opacity=".6"/>
+  </g>
+  <g stroke="#e7e5fe" stroke-width="2" stroke-linecap="round" opacity=".35" fill="none">
+    <path d="M200 165 L200 70"/>
+    <path d="M105 240 L58 158"/>
+    <path d="M300 205 L350 123"/>
+  </g>
+</svg>
