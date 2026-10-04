@@ -27,9 +27,9 @@ export default function LoginPage() {
 
   return (
     <main className="flex flex-col" style={{ minHeight: "100dvh" }}>
-      <div style={{ position: "relative", height: 460, flex: "none" }}>
+      <div style={{ position: "relative", flex: "1 1 0", minHeight: 140, maxHeight: 420 }}>
         {/* eslint-disable-next-line @next/next/no-img-element -- static SVG illustration */}
-        <img src="/hero.svg" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <img src="/hero.svg" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%", position: "absolute", inset: 0 }} />
         <div
           style={{
             position: "absolute",
@@ -40,7 +40,7 @@ export default function LoginPage() {
         />
       </div>
 
-      <div className="flex flex-col" style={{ padding: "0 26px 44px", gap: "var(--space-4)", marginTop: "auto" }}>
+      <div className="flex flex-col" style={{ padding: "0 26px calc(28px + env(safe-area-inset-bottom))", gap: "var(--space-3)", flex: "none" }}>
         <div className="flex items-center gap-[var(--space-2)]">
           <Leaf size={18} weight="regular" style={{ color: "var(--color-accent)" }} />
           <span className="kicker">Plant Care</span>
