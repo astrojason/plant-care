@@ -68,8 +68,11 @@ type Sheet = "none" | "diagnosis" | "species" | "schedule" | "recommendedSchedul
 function summarizeSoilTest(test: SoilTest): string {
   const parts: string[] = [];
   if (test.ph !== null) parts.push(`pH ${test.ph}`);
-  if (test.moistureLevel !== null) parts.push(`moisture ${test.moistureLevel}/10`);
-  if (test.lightLevel !== null) parts.push(`light ${test.lightLevel}/8`);
+  if (test.moisturePercent !== null) parts.push(`moisture ${test.moisturePercent}%`);
+  if (test.nutrientPercent !== null) parts.push(`nutrients ${test.nutrientPercent}%`);
+  if (test.lightLux !== null) parts.push(`${test.lightLux} lux`);
+  if (test.ecUsCm !== null) parts.push(`EC ${test.ecUsCm} µS/cm`);
+  if (test.tdsPpm !== null) parts.push(`TDS ${test.tdsPpm} ppm`);
   return parts.length > 0 ? `Soil test · ${parts.join(", ")}` : "Soil test";
 }
 
@@ -230,8 +233,11 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     try {
       await addSoilTest(user.uid, plantId, {
         ph: values.ph,
-        moistureLevel: values.moistureLevel,
-        lightLevel: values.lightLevel,
+        moisturePercent: values.moisturePercent,
+        nutrientPercent: values.nutrientPercent,
+        lightLux: values.lightLux,
+        ecUsCm: values.ecUsCm,
+        tdsPpm: values.tdsPpm,
         notes: values.notes || null,
       });
       setSheet("none");
@@ -365,7 +371,14 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     try {
       const idToken = await user.getIdToken();
       const latestSoilTest = soilTests[0]
-        ? { ph: soilTests[0].ph, moistureLevel: soilTests[0].moistureLevel, lightLevel: soilTests[0].lightLevel }
+        ? {
+            ph: soilTests[0].ph,
+            moisturePercent: soilTests[0].moisturePercent,
+            nutrientPercent: soilTests[0].nutrientPercent,
+            lightLux: soilTests[0].lightLux,
+            ecUsCm: soilTests[0].ecUsCm,
+            tdsPpm: soilTests[0].tdsPpm,
+          }
         : null;
       const res = await fetch("/api/diagnose", {
         method: "POST",

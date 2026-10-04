@@ -92,8 +92,11 @@ describe("mapSoilTestDoc", () => {
   it("maps a Firestore soil test document", () => {
     const test = mapSoilTestDoc("test-1", {
       ph: 6.5,
-      moistureLevel: 7,
-      lightLevel: 5,
+      moisturePercent: 40,
+      nutrientPercent: 30,
+      lightLux: 5000,
+      ecUsCm: 800,
+      tdsPpm: 400,
       notes: "topsoil felt dry",
       occurredAt: ts(new Date("2026-06-25T10:00:00Z")),
     });
@@ -101,8 +104,11 @@ describe("mapSoilTestDoc", () => {
     expect(test).toEqual({
       id: "test-1",
       ph: 6.5,
-      moistureLevel: 7,
-      lightLevel: 5,
+      moisturePercent: 40,
+      nutrientPercent: 30,
+      lightLux: 5000,
+      ecUsCm: 800,
+      tdsPpm: 400,
       notes: "topsoil felt dry",
       occurredAt: new Date("2026-06-25T10:00:00Z"),
     });
@@ -112,8 +118,11 @@ describe("mapSoilTestDoc", () => {
     const test = mapSoilTestDoc("test-1", { occurredAt: ts(new Date("2026-06-25T10:00:00Z")) });
 
     expect(test.ph).toBeNull();
-    expect(test.moistureLevel).toBeNull();
-    expect(test.lightLevel).toBeNull();
+    expect(test.moisturePercent).toBeNull();
+    expect(test.nutrientPercent).toBeNull();
+    expect(test.lightLux).toBeNull();
+    expect(test.ecUsCm).toBeNull();
+    expect(test.tdsPpm).toBeNull();
     expect(test.notes).toBeNull();
   });
 });

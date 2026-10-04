@@ -51,14 +51,14 @@ describe("POST /api/diagnose", () => {
       makeRequest({
         photoUrl: "https://x/y.jpg",
         plantId: "plant-1",
-        soilTest: { ph: 6.5, moistureLevel: 7, lightLevel: 5 },
+        soilTest: { ph: 6.5, moisturePercent: 40, lightLux: 5000 },
       })
     );
 
     const config = mockHandleVisionRequest.mock.calls[0][1];
     expect(config.userPromptText).toMatch(/pH 6\.5/);
-    expect(config.userPromptText).toMatch(/moisture 7\/10/);
-    expect(config.userPromptText).toMatch(/light 5\/8/);
+    expect(config.userPromptText).toMatch(/soil moisture 40%/);
+    expect(config.userPromptText).toMatch(/light 5000 lux/);
   });
 
   it("ignores a malformed soil test payload", async () => {

@@ -16,7 +16,7 @@ Given a photo of a plant showing possible issues, look for common houseplant/gar
 
 Map observed symptoms to the most likely cause(s) and suggest a practical treatment. If the plant appears healthy, say so and return an empty detected_issues list.
 
-You may also be given a recent soil meter reading (pH, moisture on a 1-10 dry-to-wet scale, light on a 1-8 dark-to-bright scale). Treat it as supporting evidence, not a substitute for the photo: e.g. a high moisture reading strengthens an overwatering/root-rot hypothesis, a low light reading can explain leggy growth or pale leaves, and an out-of-range pH can explain nutrient-deficiency symptoms even when the soil looks fine. Don't invent a reading that wasn't given.
+You may also be given a recent soil meter reading (soil pH, soil moisture % and nutrient %, light in lux, and water EC in µS/cm and TDS in ppm). Treat it as supporting evidence, not a substitute for the photo: e.g. a high moisture reading strengthens an overwatering/root-rot hypothesis, a low light reading can explain leggy growth or pale leaves, and an out-of-range pH can explain nutrient-deficiency symptoms even when the soil looks fine. Don't invent a reading that wasn't given.
 
 Always include, as part of suggested_treatment, a brief note that this is an AI estimate and not a substitute for professional diagnosis, especially for high-value or valuable plants.
 
@@ -41,8 +41,11 @@ export const DIAGNOSE_USER_PROMPT =
 
 export interface SoilTestContext {
   ph: number | null;
-  moistureLevel: number | null;
-  lightLevel: number | null;
+  moisturePercent: number | null;
+  nutrientPercent: number | null;
+  lightLux: number | null;
+  ecUsCm: number | null;
+  tdsPpm: number | null;
 }
 
 /**
@@ -55,8 +58,11 @@ export function buildDiagnoseUserPrompt(soilTest: SoilTestContext | null): strin
 
   const parts: string[] = [];
   if (soilTest.ph !== null) parts.push(`pH ${soilTest.ph}`);
-  if (soilTest.moistureLevel !== null) parts.push(`moisture ${soilTest.moistureLevel}/10`);
-  if (soilTest.lightLevel !== null) parts.push(`light ${soilTest.lightLevel}/8`);
+  if (soilTest.moisturePercent !== null) parts.push(`soil moisture ${soilTest.moisturePercent}%`);
+  if (soilTest.nutrientPercent !== null) parts.push(`soil nutrients ${soilTest.nutrientPercent}%`);
+  if (soilTest.lightLux !== null) parts.push(`light ${soilTest.lightLux} lux`);
+  if (soilTest.ecUsCm !== null) parts.push(`water EC ${soilTest.ecUsCm} µS/cm`);
+  if (soilTest.tdsPpm !== null) parts.push(`water TDS ${soilTest.tdsPpm} ppm`);
 
   if (parts.length === 0) return DIAGNOSE_USER_PROMPT;
   return `${DIAGNOSE_USER_PROMPT} Most recent soil meter reading: ${parts.join(", ")}.`;

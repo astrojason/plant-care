@@ -56,15 +56,19 @@ export interface Diagnosis {
 }
 
 /**
- * A reading from a handheld 3-in-1 soil meter (pH, moisture, light). All
- * three fields are independently optional since a meter may only report
- * some of them, or a user may only note the ones they read.
+ * A reading from a handheld 7-in-1 soil meter. Soil: pH, moisture % and
+ * nutrient (fertility) %. Light: lux. Water: EC (µS/cm) and TDS (ppm). Every
+ * field is independently optional since a user may only note the ones they
+ * read.
  */
 export interface SoilTest {
   id: string;
   ph: number | null;
-  moistureLevel: number | null;
-  lightLevel: number | null;
+  moisturePercent: number | null;
+  nutrientPercent: number | null;
+  lightLux: number | null;
+  ecUsCm: number | null;
+  tdsPpm: number | null;
   notes: string | null;
   occurredAt: Date;
 }

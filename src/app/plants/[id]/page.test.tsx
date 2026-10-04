@@ -293,7 +293,7 @@ describe("PlantDetailPage", () => {
     });
   });
 
-  it("logs a soil test with pH, moisture, and light from the overflow menu's sheet", async () => {
+  it("logs a soil test with soil, light, and water readings from the overflow menu's sheet", async () => {
     mockAddSoilTest.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderAndLoadPlant();
@@ -301,14 +301,20 @@ describe("PlantDetailPage", () => {
     await user.click(screen.getByRole("button", { name: /more actions/i }));
     await user.click(screen.getByRole("button", { name: "Log soil test" }));
     await user.type(screen.getByLabelText("pH"), "6.5");
-    await user.click(screen.getByRole("button", { name: "Increase moisture" }));
-    await user.click(screen.getByRole("button", { name: "Increase light" }));
+    await user.type(screen.getByLabelText("Moisture (%)"), "40");
+    await user.type(screen.getByLabelText("Nutrients (%)"), "30");
+    await user.type(screen.getByLabelText("Light (lux)"), "5000");
+    await user.type(screen.getByLabelText("EC (µS/cm)"), "800");
+    await user.type(screen.getByLabelText("TDS (ppm)"), "400");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mockAddSoilTest).toHaveBeenCalledWith("user-1", "plant-1", {
       ph: 6.5,
-      moistureLevel: 1,
-      lightLevel: 1,
+      moisturePercent: 40,
+      nutrientPercent: 30,
+      lightLux: 5000,
+      ecUsCm: 800,
+      tdsPpm: 400,
       notes: null,
     });
   });
@@ -325,7 +331,7 @@ describe("PlantDetailPage", () => {
         docs: [
           {
             id: "test-1",
-            data: () => ({ ph: 6.5, moistureLevel: 7, lightLevel: 5, occurredAt: ts(new Date("2026-06-25")) }),
+            data: () => ({ ph: 6.5, moisturePercent: 40, lightLux: 5000, occurredAt: ts(new Date("2026-06-25")) }),
           },
         ],
       });
@@ -495,7 +501,7 @@ describe("PlantDetailPage", () => {
         docs: [
           {
             id: "test-1",
-            data: () => ({ ph: 6.5, moistureLevel: 7, lightLevel: 5, occurredAt: ts(new Date("2026-06-25")) }),
+            data: () => ({ ph: 6.5, moisturePercent: 40, lightLux: 5000, occurredAt: ts(new Date("2026-06-25")) }),
           },
         ],
       });
@@ -512,7 +518,7 @@ describe("PlantDetailPage", () => {
           photoUrl: "https://x/diag.jpg",
           plantId: "plant-1",
           confirmNearLimit: false,
-          soilTest: { ph: 6.5, moistureLevel: 7, lightLevel: 5 },
+          soilTest: { ph: 6.5, moisturePercent: 40, nutrientPercent: null, lightLux: 5000, ecUsCm: null, tdsPpm: null },
         }),
       })
     );

@@ -3,8 +3,11 @@ import { db } from "@/lib/firebase/client";
 
 export interface NewSoilTestInput {
   ph: number | null;
-  moistureLevel: number | null;
-  lightLevel: number | null;
+  moisturePercent: number | null;
+  nutrientPercent: number | null;
+  lightLux: number | null;
+  ecUsCm: number | null;
+  tdsPpm: number | null;
   notes: string | null;
 }
 

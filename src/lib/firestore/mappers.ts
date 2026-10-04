@@ -49,8 +49,11 @@ export function mapSoilTestDoc(id: string, data: DocumentData): SoilTest {
   return {
     id,
     ph: data.ph ?? null,
-    moistureLevel: data.moistureLevel ?? null,
-    lightLevel: data.lightLevel ?? null,
+    moisturePercent: data.moisturePercent ?? null,
+    nutrientPercent: data.nutrientPercent ?? null,
+    lightLux: data.lightLux ?? null,
+    ecUsCm: data.ecUsCm ?? null,
+    tdsPpm: data.tdsPpm ?? null,
     notes: data.notes ?? null,
     occurredAt: toDateOrNull(data.occurredAt) ?? new Date(),
   };

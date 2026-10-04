@@ -1,21 +1,53 @@
 "use client";
 
 import { useState } from "react";
-import { Drop, Sun } from "@phosphor-icons/react";
-import { Stepper } from "./Stepper";
 
 export interface SoilTestFormValues {
   ph: number | null;
-  moistureLevel: number | null;
-  lightLevel: number | null;
+  moisturePercent: number | null;
+  nutrientPercent: number | null;
+  lightLux: number | null;
+  ecUsCm: number | null;
+  tdsPpm: number | null;
   notes: string;
 }
 
-const EMPTY_VALUES: SoilTestFormValues = { ph: null, moistureLevel: null, lightLevel: null, notes: "" };
+type NumericKey = Exclude<keyof SoilTestFormValues, "notes">;
 
-/** Logs a reading from a handheld 3-in-1 soil meter (pH probe, moisture and
- * light dials). All fields are optional — a meter reading is whatever the
- * user happened to check. */
+const EMPTY_VALUES: SoilTestFormValues = {
+  ph: null,
+  moisturePercent: null,
+  nutrientPercent: null,
+  lightLux: null,
+  ecUsCm: null,
+  tdsPpm: null,
+  notes: "",
+};
+
+const GROUPS: { title: string; fields: { key: NumericKey; label: string; step: number; max?: number; placeholder: string }[] }[] = [
+  {
+    title: "Soil",
+    fields: [
+      { key: "ph", label: "pH", step: 0.1, max: 14, placeholder: "e.g. 6.5" },
+      { key: "moisturePercent", label: "Moisture (%)", step: 1, max: 100, placeholder: "e.g. 40" },
+      { key: "nutrientPercent", label: "Nutrients (%)", step: 1, max: 100, placeholder: "e.g. 30" },
+    ],
+  },
+  {
+    title: "Light",
+    fields: [{ key: "lightLux", label: "Light (lux)", step: 1, placeholder: "e.g. 5000" }],
+  },
+  {
+    title: "Water",
+    fields: [
+      { key: "ecUsCm", label: "EC (µS/cm)", step: 1, placeholder: "e.g. 800" },
+      { key: "tdsPpm", label: "TDS (ppm)", step: 1, placeholder: "e.g. 400" },
+    ],
+  },
+];
+
+/** Logs a reading from a handheld 7-in-1 soil meter. All fields are optional
+ * — a meter reading is whatever the user happened to check. */
 export function LogSoilTestSheet({
   onSave,
   onCancel,
@@ -25,63 +57,42 @@ export function LogSoilTestSheet({
 }) {
   const [values, setValues] = useState<SoilTestFormValues>(EMPTY_VALUES);
 
-  function update<K extends keyof SoilTestFormValues>(key: K, value: SoilTestFormValues[K]) {
-    setValues((v) => ({ ...v, [key]: value }));
-  }
-
   return (
     <div className="dialog-backdrop" onClick={onCancel}>
       <div role="dialog" aria-modal="true" aria-label="Log soil test" className="dialog" onClick={(e) => e.stopPropagation()}>
         <h2 className="dialog-title">Log soil test</h2>
         <div className="flex flex-col gap-[var(--space-3)]">
-          <div className="field">
-            <label htmlFor="soil-test-ph">pH</label>
-            <input
-              id="soil-test-ph"
-              className="input"
-              type="number"
-              inputMode="decimal"
-              step={0.1}
-              min={0}
-              max={14}
-              placeholder="e.g. 6.5"
-              value={values.ph ?? ""}
-              onChange={(e) => update("ph", e.target.value === "" ? null : Number(e.target.value))}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-[var(--space-3)]">
-            <span className="flex items-center gap-[var(--space-2)]">
-              <Drop size={16} weight="regular" style={{ color: "var(--color-accent)" }} />
-              Moisture
-            </span>
-            <Stepper
-              label="moisture"
-              value={values.moistureLevel}
-              onChange={(v) => update("moistureLevel", v)}
-              min={1}
-              max={10}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-[var(--space-3)]">
-            <span className="flex items-center gap-[var(--space-2)]">
-              <Sun size={16} weight="regular" style={{ color: "var(--color-accent)" }} />
-              Light
-            </span>
-            <Stepper
-              label="light"
-              value={values.lightLevel}
-              onChange={(v) => update("lightLevel", v)}
-              min={1}
-              max={8}
-            />
-          </div>
+          {GROUPS.map((group) => (
+            <fieldset key={group.title} className="flex flex-col gap-[var(--space-3)]">
+              <legend className="label">{group.title}</legend>
+              {group.fields.map((f) => (
+                <div key={f.key} className="field">
+                  <label htmlFor={`soil-test-${f.key}`}>{f.label}</label>
+                  <input
+                    id={`soil-test-${f.key}`}
+                    className="input"
+                    type="number"
+                    inputMode="decimal"
+                    step={f.step}
+                    min={0}
+                    max={f.max}
+                    placeholder={f.placeholder}
+                    value={values[f.key] ?? ""}
+                    onChange={(e) =>
+                      setValues((v) => ({ ...v, [f.key]: e.target.value === "" ? null : Number(e.target.value) }))
+                    }
+                  />
+                </div>
+              ))}
+            </fieldset>
+          ))}
           <div className="field">
             <label htmlFor="soil-test-notes">Notes</label>
             <textarea
               id="soil-test-notes"
               className="input"
               value={values.notes}
-              onChange={(e) => update("notes", e.target.value)}
+              onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))}
             />
           </div>
         </div>

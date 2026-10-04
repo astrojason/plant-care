@@ -6,11 +6,16 @@ import { buildDiagnoseUserPrompt, DIAGNOSE_SYSTEM_PROMPT, type SoilTestContext }
 function parseSoilTestContext(value: unknown): SoilTestContext | null {
   if (typeof value !== "object" || value === null) return null;
   const v = value as Record<string, unknown>;
-  const ph = typeof v.ph === "number" ? v.ph : null;
-  const moistureLevel = typeof v.moistureLevel === "number" ? v.moistureLevel : null;
-  const lightLevel = typeof v.lightLevel === "number" ? v.lightLevel : null;
-  if (ph === null && moistureLevel === null && lightLevel === null) return null;
-  return { ph, moistureLevel, lightLevel };
+  const num = (x: unknown) => (typeof x === "number" ? x : null);
+  const context: SoilTestContext = {
+    ph: num(v.ph),
+    moisturePercent: num(v.moisturePercent),
+    nutrientPercent: num(v.nutrientPercent),
+    lightLux: num(v.lightLux),
+    ecUsCm: num(v.ecUsCm),
+    tdsPpm: num(v.tdsPpm),
+  };
+  return Object.values(context).every((x) => x === null) ? null : context;
 }
 
 export async function POST(request: Request) {
