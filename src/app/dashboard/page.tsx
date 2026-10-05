@@ -8,12 +8,13 @@ import {
   type DocumentData,
   type QuerySnapshot,
 } from "firebase/firestore";
-import { Bell, Drop, Flask, CloudFog, Check } from "@phosphor-icons/react";
+import { Bell, Warning, Drop, Flask, CloudFog, Check } from "@phosphor-icons/react";
 import { db } from "@/lib/firebase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AppShell } from "@/components/AppShell";
 import { ErrorBlock } from "@/components/ErrorBlock";
+import { getReadingAlerts, type ReadingAlert } from "@/lib/care/readings";
 import { getCareTasks, type CareTask, type LoggableCareType } from "@/lib/care/schedule";
 import { logCareEvent } from "@/lib/care/log";
 import { mapPlantDoc } from "@/lib/firestore/mappers";
@@ -106,6 +107,13 @@ function DashboardContent() {
   const allTasks = plants ? getCareTasks(plants, now) : [];
   const dueTasks = allTasks.filter((t) => t.daysPastDue >= 0 && !removedKeys.has(taskKey(t)));
   const laterTasks = allTasks.filter((t) => t.daysPastDue < 0);
+
+  // Moisture and nutrient alerts already appear as due tasks; these have no care action to attach to.
+  const readingAlerts: { plant: Plant; alert: ReadingAlert }[] = (plants ?? []).flatMap((plant) =>
+    getReadingAlerts(plant, now)
+      .filter((a) => a.metric === "lightLux" || a.metric === "ph" || a.metric === "ecUsCm")
+      .map((alert) => ({ plant, alert }))
+  );
 
   const weekStart = startOfDay(now);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
@@ -231,7 +239,7 @@ function DashboardContent() {
                     {task.plant.nickname}
                   </span>
                   <span className="text-secondary" style={{ fontSize: 12 }}>
-                    {!Number.isFinite(days) ? "Never logged" : days >= 1 ? `${days} day${days === 1 ? "" : "s"} overdue` : "Due today"}
+                    {task.reason ? task.reason : !Number.isFinite(days) ? "Never logged" : days >= 1 ? `${days} day${days === 1 ? "" : "s"} overdue` : "Due today"}
                   </span>
                 </div>
                 <button
@@ -253,6 +261,29 @@ function DashboardContent() {
       )}
 
       {logError !== null && <ErrorBlock error={logError} title="Failed to log care event" />}
+
+      {readingAlerts.length > 0 && (
+        <section aria-label="Reading alerts">
+          <h2 className="text-secondary mb-[var(--space-2)]" style={{ fontSize: 13, textTransform: "uppercase" }}>
+            Needs attention
+          </h2>
+          <div className="flex flex-col gap-[var(--space-2)]">
+            {readingAlerts.map(({ plant, alert }) => (
+              <Link
+                key={`${plant.id}:${alert.metric}`}
+                href={`/plants/${plant.id}`}
+                className="flex items-center gap-[var(--space-2)]"
+                style={{ fontSize: 13, textDecoration: "none", color: "inherit" }}
+              >
+                <Warning size={16} weight="fill" style={{ color: "var(--color-accent)", flex: "none" }} />
+                <span>
+                  <strong style={{ fontWeight: 500 }}>{plant.nickname}</strong> · {alert.message}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <div className="flex items-center justify-between mb-[var(--space-2)]">

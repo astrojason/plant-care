@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { deleteObject, listAll, ref } from "firebase/storage";
 import { db, storage } from "@/lib/firebase/client";
+import type { CareTargets } from "@/lib/types/plant";
 
 export interface NewPlantInput {
   nickname: string;
@@ -21,6 +22,7 @@ export interface NewPlantInput {
   wateringIntervalDays: number | null;
   fertilizingIntervalDays: number | null;
   mistingIntervalDays: number | null;
+  targets: CareTargets | null;
 }
 
 export async function createPlant(uid: string, input: NewPlantInput): Promise<string> {
@@ -65,6 +67,11 @@ export async function updateCareSchedule(
 ): Promise<void> {
   const plantRef = doc(db, "users", uid, "plants", plantId);
   await updateDoc(plantRef, { ...schedule, updatedAt: serverTimestamp() });
+}
+
+export async function updateCareTargets(uid: string, plantId: string, targets: CareTargets | null): Promise<void> {
+  const plantRef = doc(db, "users", uid, "plants", plantId);
+  await updateDoc(plantRef, { targets, updatedAt: serverTimestamp() });
 }
 
 const PLANT_SUBCOLLECTIONS = ["photos", "careEvents", "diagnoses", "soilTests"] as const;

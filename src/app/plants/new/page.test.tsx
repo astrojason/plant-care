@@ -61,6 +61,17 @@ const IDENTIFICATION_RESULT = {
   suggested_watering_interval_days: 7,
   suggested_fertilizing_interval_days: 30,
   suggested_misting_interval_days: 3,
+  suggested_targets: {
+    moisture_min_percent: 30,
+    moisture_max_percent: 60,
+    nutrient_min_percent: null,
+    nutrient_max_percent: null,
+    light_min_lux: 5000,
+    light_max_lux: null,
+    ph_min: 6,
+    ph_max: 7,
+    ec_max_us_cm: 1500,
+  },
 };
 
 beforeEach(() => {
@@ -185,6 +196,13 @@ describe("AddPlantPage", () => {
       expect.objectContaining({
         primaryPhotoUrl: "https://x/photo.jpg",
         speciesCommonName: "Fiddle Leaf Fig",
+        targets: {
+          moisturePercent: { min: 30, max: 60 },
+          nutrientPercent: null,
+          lightLux: { min: 5000, max: null },
+          ph: { min: 6, max: 7 },
+          ecUsCm: { min: null, max: 1500 },
+        },
       })
     );
     expect(mockAddPlantPhoto).toHaveBeenCalledWith(

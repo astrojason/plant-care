@@ -1,5 +1,6 @@
 "use client";
 
+import { targetsFromSuggestion } from "@/lib/care/targets";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Sparkle, Drop, Flask, CloudFog } from "@phosphor-icons/react";
@@ -149,6 +150,7 @@ function AddPlantContent() {
         wateringIntervalDays: values.wateringIntervalDays,
         fertilizingIntervalDays: values.fertilizingIntervalDays,
         mistingIntervalDays: values.mistingIntervalDays,
+        targets: identification ? targetsFromSuggestion(identification.suggested_targets) : null,
       });
       await addPlantPhoto(user.uid, plantId, photo.storagePath, photo.downloadUrl, "identification");
       router.replace(`/plants/${plantId}`);

@@ -1,9 +1,47 @@
 import type { Timestamp, DocumentData } from "firebase/firestore";
 import type { DiagnosisResult } from "@/lib/openai/schemas";
-import type { CareEvent, DetectedIssue, Diagnosis, Plant, PlantPhoto, SoilTest } from "@/lib/types/plant";
+import type {
+  CareEvent,
+  CareTargets,
+  DetectedIssue,
+  Diagnosis,
+  LatestReading,
+  Plant,
+  PlantPhoto,
+  SoilTest,
+} from "@/lib/types/plant";
 
 function toDateOrNull(value: Timestamp | null | undefined): Date | null {
   return value ? value.toDate() : null;
+}
+
+function mapRange(value: DocumentData | null | undefined) {
+  return value ? { min: value.min ?? null, max: value.max ?? null } : null;
+}
+
+function mapTargets(data: DocumentData | null | undefined): CareTargets | null {
+  if (!data) return null;
+  return {
+    moisturePercent: mapRange(data.moisturePercent),
+    nutrientPercent: mapRange(data.nutrientPercent),
+    lightLux: mapRange(data.lightLux),
+    ph: mapRange(data.ph),
+    ecUsCm: mapRange(data.ecUsCm),
+  };
+}
+
+function mapLatestReading(data: DocumentData | null | undefined): LatestReading | null {
+  const occurredAt = toDateOrNull(data?.occurredAt);
+  if (!data || !occurredAt) return null;
+  return {
+    ph: data.ph ?? null,
+    moisturePercent: data.moisturePercent ?? null,
+    nutrientPercent: data.nutrientPercent ?? null,
+    lightLux: data.lightLux ?? null,
+    ecUsCm: data.ecUsCm ?? null,
+    tdsPpm: data.tdsPpm ?? null,
+    occurredAt,
+  };
 }
 
 export function mapPlantDoc(id: string, data: DocumentData): Plant {
@@ -18,6 +56,8 @@ export function mapPlantDoc(id: string, data: DocumentData): Plant {
     wateringIntervalDays: data.wateringIntervalDays ?? null,
     fertilizingIntervalDays: data.fertilizingIntervalDays ?? null,
     mistingIntervalDays: data.mistingIntervalDays ?? null,
+    targets: mapTargets(data.targets),
+    latestReading: mapLatestReading(data.latestReading),
     lastWateredAt: toDateOrNull(data.lastWateredAt),
     lastFertilizedAt: toDateOrNull(data.lastFertilizedAt),
     lastMistedAt: toDateOrNull(data.lastMistedAt),

@@ -15,6 +15,17 @@ describe("IdentificationResultSchema", () => {
     suggested_watering_interval_days: 7,
     suggested_fertilizing_interval_days: 30,
     suggested_misting_interval_days: 3,
+    suggested_targets: {
+      moisture_min_percent: 30,
+      moisture_max_percent: 60,
+      nutrient_min_percent: null,
+      nutrient_max_percent: null,
+      light_min_lux: 5000,
+      light_max_lux: null,
+      ph_min: 6,
+      ph_max: 7,
+      ec_max_us_cm: 1500,
+    },
   };
 
   it("accepts a well-formed identification result", () => {

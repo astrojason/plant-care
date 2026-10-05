@@ -22,8 +22,12 @@ import { RecommendedScheduleSheet } from "@/components/RecommendedScheduleSheet"
 import { LogSoilTestSheet, type SoilTestFormValues } from "@/components/LogSoilTestSheet";
 import type { UploadedPhoto } from "@/components/PhotoUploader";
 import { getMostUrgentTask } from "@/lib/care/schedule";
+import { getReadingAlerts } from "@/lib/care/readings";
+import { targetsFromSuggestion } from "@/lib/care/targets";
+import { EditTargetsSheet } from "@/components/EditTargetsSheet";
+import { ReadingAlerts } from "@/components/ReadingAlerts";
 import { deleteCareEvent, logCareEvent } from "@/lib/care/log";
-import { deletePlant, deletePlantPhoto, updateCareSchedule, updatePlantSpecies } from "@/lib/firestore/plants";
+import { deletePlant, deletePlantPhoto, updateCareSchedule, updateCareTargets, updatePlantSpecies } from "@/lib/firestore/plants";
 import { useLocations } from "@/lib/firestore/locations";
 import { addPlantPhoto } from "@/lib/firestore/photos";
 import { createDiagnosis, deleteDiagnosis } from "@/lib/firestore/diagnoses";
@@ -37,7 +41,7 @@ import {
   mapPlantPhotoDoc,
   mapSoilTestDoc,
 } from "@/lib/firestore/mappers";
-import type { CareEvent, CareEventType, Diagnosis, Plant, PlantPhoto, SoilTest } from "@/lib/types/plant";
+import type { CareEvent, CareEventType, CareTargets, Diagnosis, Plant, PlantPhoto, SoilTest } from "@/lib/types/plant";
 import type { DiagnosisResult, IdentificationResult } from "@/lib/openai/schemas";
 
 const CARE_EVENT_LABELS: Record<CareEventType, string> = {
@@ -63,7 +67,7 @@ interface NearLimitState {
   photoPath: string;
 }
 
-type Sheet = "none" | "diagnosis" | "species" | "schedule" | "recommendedSchedule" | "soilTest";
+type Sheet = "none" | "diagnosis" | "species" | "schedule" | "recommendedSchedule" | "soilTest" | "targets";
 
 function summarizeSoilTest(test: SoilTest): string {
   const parts: string[] = [];
@@ -102,6 +106,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
   const [pendingConfirmation, setPendingConfirmation] = useState<NearLimitState | null>(null);
 
   const [recommended, setRecommended] = useState<ScheduleFormValues | null>(null);
+  const [recommendedTargets, setRecommendedTargets] = useState<CareTargets | null>(null);
   const [recommending, setRecommending] = useState(false);
   const [recommendApplying, setRecommendApplying] = useState(false);
   const [recommendError, setRecommendError] = useState<unknown>(null);
@@ -282,6 +287,30 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     }
   }
 
+  async function handleSaveTargets(targets: CareTargets) {
+    if (!user) return;
+    try {
+      await updateCareTargets(user.uid, plantId, targets);
+      setSheet("none");
+    } catch (err) {
+      setError(err);
+    }
+  }
+
+  /** The newest reading in the shape the AI routes accept, or null if the plant has none. */
+  function latestSoilTestPayload() {
+    const latest = soilTests[0];
+    if (!latest) return null;
+    return {
+      ph: latest.ph,
+      moisturePercent: latest.moisturePercent,
+      nutrientPercent: latest.nutrientPercent,
+      lightLux: latest.lightLux,
+      ecUsCm: latest.ecUsCm,
+      tdsPpm: latest.tdsPpm,
+    };
+  }
+
   async function runRecommend(confirmNearLimit = false) {
     if (!user || !plant) return;
     setRecommendError(null);
@@ -296,6 +325,8 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
           confirmNearLimit,
           // Trust the species already saved (or corrected) on the plant rather than re-guessing from the photo.
           speciesName: plant.speciesScientificName || plant.speciesCommonName || undefined,
+          // Lets the refreshed plan account for how the plant is actually doing.
+          soilTest: latestSoilTestPayload() ?? undefined,
         }),
       });
       const json = await parseJsonResponse(res);
@@ -312,6 +343,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
         fertilizingIntervalDays: result.suggested_fertilizing_interval_days,
         mistingIntervalDays: result.suggested_misting_interval_days,
       });
+      setRecommendedTargets(targetsFromSuggestion(result.suggested_targets));
     } catch (err) {
       setRecommendError(err);
     } finally {
@@ -322,6 +354,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
   function openRecommendedSchedule() {
     setOverflowOpen(false);
     setRecommended(null);
+    setRecommendedTargets(null);
     setRecommendError(null);
     setSheet("recommendedSchedule");
     void runRecommend();
@@ -332,6 +365,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     setRecommendApplying(true);
     try {
       await updateCareSchedule(user.uid, plantId, recommended);
+      if (recommendedTargets) await updateCareTargets(user.uid, plantId, recommendedTargets);
       setSheet("none");
     } catch (err) {
       setRecommendError(err);
@@ -370,16 +404,7 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
     setDiagnosing(true);
     try {
       const idToken = await user.getIdToken();
-      const latestSoilTest = soilTests[0]
-        ? {
-            ph: soilTests[0].ph,
-            moisturePercent: soilTests[0].moisturePercent,
-            nutrientPercent: soilTests[0].nutrientPercent,
-            lightLux: soilTests[0].lightLux,
-            ecUsCm: soilTests[0].ecUsCm,
-            tdsPpm: soilTests[0].tdsPpm,
-          }
-        : null;
+      const latestSoilTest = latestSoilTestPayload();
       const res = await fetch("/api/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
@@ -533,6 +558,16 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
                 >
                   Edit schedule
                 </button>
+                <button
+                  type="button"
+                  className="overflow-menu-item"
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    setSheet("targets");
+                  }}
+                >
+                  Edit targets
+                </button>
                 <button type="button" className="overflow-menu-item" onClick={openRecommendedSchedule}>
                   Update recommended schedule
                 </button>
@@ -575,6 +610,8 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
       </div>
 
       <div className="flex flex-col gap-[var(--space-6)] p-5">
+        <ReadingAlerts alerts={getReadingAlerts(plant)} />
+
         <CareEventButtons plant={plant} onLog={handleLog} />
 
         <CadenceRows plant={plant} />
@@ -662,12 +699,18 @@ function PlantDetailContent({ plantId }: { plantId: string }) {
             mistingIntervalDays: plant.mistingIntervalDays,
           }}
           suggested={recommended}
+          currentTargets={plant.targets}
+          suggestedTargets={recommendedTargets}
           loading={recommending}
           saving={recommendApplying}
           error={recommendError}
           onApply={handleApplyRecommended}
           onCancel={() => setSheet("none")}
         />
+      )}
+
+      {sheet === "targets" && (
+        <EditTargetsSheet initial={plant.targets} onSave={handleSaveTargets} onCancel={() => setSheet("none")} />
       )}
 
       {sheet === "soilTest" && (

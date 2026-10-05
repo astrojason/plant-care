@@ -1,4 +1,5 @@
 import type { CareStatus, Plant } from "../types/plant";
+import { getReadingOverride } from "./readings";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -37,6 +38,8 @@ export interface CareTask {
   careType: LoggableCareType;
   dueAt: Date;
   daysPastDue: number;
+  /** Set when a meter reading, not the interval schedule, is why this is due. */
+  reason: string | null;
 }
 
 const CARE_TYPE_FIELDS: {
@@ -49,6 +52,38 @@ const CARE_TYPE_FIELDS: {
   { careType: "misted", last: "lastMistedAt", interval: "mistingIntervalDays" },
 ];
 
+interface EffectiveCare {
+  daysPastDue: number | null;
+  dueAt: Date;
+  reason: string | null;
+}
+
+/**
+ * The schedule's verdict for one care type, overridden by the plant's latest
+ * fresh meter reading when it has one: a low reading makes the care due now
+ * (even if untracked or not yet due by interval), and an in-range reading
+ * holds off an overdue schedule until the reading goes stale.
+ */
+function getEffectiveCare(
+  plant: Plant,
+  { careType, last, interval }: (typeof CARE_TYPE_FIELDS)[number],
+  now: Date
+): EffectiveCare {
+  const lastDone = plant[last];
+  const intervalDays = plant[interval];
+  const scheduled = daysPastDue(lastDone, intervalDays, now);
+  const scheduledDueAt = lastDone && intervalDays ? new Date(lastDone.getTime() + intervalDays * DAY_MS) : now;
+
+  const override = getReadingOverride(plant, careType, lastDone, now);
+  if (override?.kind === "due") {
+    return { daysPastDue: Math.max(scheduled ?? 0, 0), dueAt: scheduled !== null && scheduled > 0 ? scheduledDueAt : now, reason: override.reason };
+  }
+  if (override?.kind === "ok" && scheduled !== null && scheduled > 0) {
+    return { daysPastDue: (now.getTime() - override.until.getTime()) / DAY_MS, dueAt: override.until, reason: null };
+  }
+  return { daysPastDue: scheduled, dueAt: scheduledDueAt, reason: null };
+}
+
 /**
  * Flattens each plant's tracked care types into individual task objects,
  * one per care type that's due or was due within the last week. Sorted
@@ -59,14 +94,10 @@ export function getCareTasks(plants: Plant[], now: Date = new Date()): CareTask[
   const tasks: CareTask[] = [];
 
   for (const plant of plants) {
-    for (const { careType, last, interval } of CARE_TYPE_FIELDS) {
-      const intervalDays = plant[interval];
-      const lastDone = plant[last];
-      const past = daysPastDue(lastDone, intervalDays, now);
+    for (const field of CARE_TYPE_FIELDS) {
+      const { daysPastDue: past, dueAt, reason } = getEffectiveCare(plant, field, now);
       if (past === null || past <= -7) continue;
-
-      const dueAt = lastDone ? new Date(lastDone.getTime() + intervalDays! * DAY_MS) : now;
-      tasks.push({ plant, careType, dueAt, daysPastDue: past });
+      tasks.push({ plant, careType: field.careType, dueAt, daysPastDue: past, reason });
     }
   }
 
@@ -77,6 +108,7 @@ export interface MostUrgentTask {
   careType: LoggableCareType;
   label: string;
   daysPastDue: number;
+  reason: string | null;
 }
 
 const LABEL_BY_CARE_TYPE: Record<LoggableCareType, string> = {
@@ -92,22 +124,18 @@ const LABEL_BY_CARE_TYPE: Record<LoggableCareType, string> = {
  */
 export function getMostUrgentTask(plant: Plant, now: Date = new Date()): MostUrgentTask | null {
   let best: MostUrgentTask | null = null;
-  for (const { careType, last, interval } of CARE_TYPE_FIELDS) {
-    const past = daysPastDue(plant[last], plant[interval], now);
+  for (const field of CARE_TYPE_FIELDS) {
+    const { daysPastDue: past, reason } = getEffectiveCare(plant, field, now);
     if (past === null) continue;
     if (best === null || past > best.daysPastDue) {
-      best = { careType, label: LABEL_BY_CARE_TYPE[careType], daysPastDue: past };
+      best = { careType: field.careType, label: LABEL_BY_CARE_TYPE[field.careType], daysPastDue: past, reason };
     }
   }
   return best;
 }
 
 function maxDaysPastDue(plant: Plant, now: Date): number {
-  const values = [
-    daysPastDue(plant.lastWateredAt, plant.wateringIntervalDays, now),
-    daysPastDue(plant.lastFertilizedAt, plant.fertilizingIntervalDays, now),
-    daysPastDue(plant.lastMistedAt, plant.mistingIntervalDays, now),
-  ].filter((v): v is number => v !== null);
+  const values = CARE_TYPE_FIELDS.map((field) => getEffectiveCare(plant, field, now).daysPastDue).filter((v): v is number => v !== null);
 
   return values.length > 0 ? Math.max(...values) : -Infinity;
 }

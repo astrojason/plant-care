@@ -39,6 +39,27 @@ describe("buildDiagnoseUserPrompt", () => {
   });
 });
 
+describe("buildIdentifyUserPrompt with a soil test", () => {
+  it("folds the latest reading into the plan-refresh prompt", () => {
+    const prompt = buildIdentifyUserPrompt("Ficus lyrata", {
+      ph: null,
+      moisturePercent: 12,
+      nutrientPercent: null,
+      lightLux: 900,
+      ecUsCm: null,
+      tdsPpm: null,
+    });
+
+    expect(prompt).toContain('"Ficus lyrata"');
+    expect(prompt).toContain("Most recent soil meter reading: soil moisture 12%, light 900 lux.");
+  });
+
+  it("is unchanged when the reading has no fields", () => {
+    const empty = { ph: null, moisturePercent: null, nutrientPercent: null, lightLux: null, ecUsCm: null, tdsPpm: null };
+    expect(buildIdentifyUserPrompt(null, empty)).toBe(buildIdentifyUserPrompt(null));
+  });
+});
+
 describe("buildIdentifyUserPrompt", () => {
   it("returns the base prompt when there is no species name", () => {
     expect(buildIdentifyUserPrompt()).toBe(IDENTIFY_USER_PROMPT);

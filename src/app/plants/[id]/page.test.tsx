@@ -52,10 +52,12 @@ vi.mock("@/lib/care/log", () => ({
 const mockDeletePlant = vi.fn();
 const mockUpdatePlantSpecies = vi.fn();
 const mockUpdateCareSchedule = vi.fn();
+const mockUpdateCareTargets = vi.fn();
 vi.mock("@/lib/firestore/plants", () => ({
   deletePlant: (...args: unknown[]) => mockDeletePlant(...args),
   updatePlantSpecies: (...args: unknown[]) => mockUpdatePlantSpecies(...args),
   updateCareSchedule: (...args: unknown[]) => mockUpdateCareSchedule(...args),
+  updateCareTargets: (...args: unknown[]) => mockUpdateCareTargets(...args),
 }));
 
 const mockAddPlantPhoto = vi.fn();
@@ -146,6 +148,7 @@ beforeEach(() => {
   mockDeletePlant.mockReset();
   mockUpdatePlantSpecies.mockReset();
   mockUpdateCareSchedule.mockReset();
+  mockUpdateCareTargets.mockReset();
   mockAddPlantPhoto.mockReset();
   mockCreateDiagnosis.mockReset();
   mockDeleteDiagnosis.mockReset();
@@ -265,6 +268,17 @@ describe("PlantDetailPage", () => {
           suggested_watering_interval_days: 10,
           suggested_fertilizing_interval_days: 45,
           suggested_misting_interval_days: 4,
+          suggested_targets: {
+            moisture_min_percent: 30,
+            moisture_max_percent: 60,
+            nutrient_min_percent: null,
+            nutrient_max_percent: null,
+            light_min_lux: 5000,
+            light_max_lux: null,
+            ph_min: 6,
+            ph_max: 7,
+            ec_max_us_cm: 1500,
+          },
         },
       }),
     });
@@ -290,6 +304,64 @@ describe("PlantDetailPage", () => {
       wateringIntervalDays: 10,
       fertilizingIntervalDays: 45,
       mistingIntervalDays: 4,
+    });
+    expect(mockUpdateCareTargets).toHaveBeenCalledWith("user-1", "plant-1", {
+      moisturePercent: { min: 30, max: 60 },
+      nutrientPercent: null,
+      lightLux: { min: 5000, max: null },
+      ph: { min: 6, max: 7 },
+      ecUsCm: { min: null, max: 1500 },
+    });
+  });
+
+  it("sends the latest soil reading when refreshing the recommended schedule", async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ result: {} }) });
+    const user = userEvent.setup();
+    render(<PlantDetailPage />);
+    act(() => {
+      subscriptions[0]?.onNext(plantSnapshot());
+      subscriptions[1]?.onNext({ docs: [] });
+      subscriptions[2]?.onNext({ docs: [] });
+      subscriptions[3]?.onNext({
+        docs: [{ id: "test-1", data: () => ({ moisturePercent: 12, occurredAt: ts(new Date("2026-06-25")) }) }],
+      });
+      subscriptions[4]?.onNext({ docs: [] });
+    });
+
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("button", { name: "Update recommended schedule" }));
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/identify",
+      expect.objectContaining({
+        body: JSON.stringify({
+          photoUrl: "https://x/y.jpg",
+          confirmNearLimit: false,
+          speciesName: "Ficus lyrata",
+          soilTest: { ph: null, moisturePercent: 12, nutrientPercent: null, lightLux: null, ecUsCm: null, tdsPpm: null },
+        }),
+      })
+    );
+  });
+
+  it("saves edited target ranges", async () => {
+    mockUpdateCareTargets.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderAndLoadPlant();
+
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("button", { name: "Edit targets" }));
+    await user.type(screen.getByLabelText("Moisture (%) min"), "30");
+    await user.type(screen.getByLabelText("Moisture (%) max"), "60");
+    await user.type(screen.getByLabelText("EC (µS/cm) max"), "1500");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mockUpdateCareTargets).toHaveBeenCalledWith("user-1", "plant-1", {
+      moisturePercent: { min: 30, max: 60 },
+      nutrientPercent: null,
+      lightLux: null,
+      ph: null,
+      ecUsCm: { min: null, max: 1500 },
     });
   });
 

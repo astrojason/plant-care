@@ -8,7 +8,9 @@ Base the suggested watering/fertilizing/misting intervals (in days) on the speci
 - Watering: succulents, cacti, snake plants and ZZ plants need water every 14-28 days; most tropical foliage plants (pothos, philodendron, monstera) every 7-10 days; ferns, calatheas and peace lilies every 3-5 days.
 - Misting: humidity lovers (ferns, calatheas, orchids, air plants) every 2-4 days; most tropicals every 5-10 days; succulents, cacti and other plants that dislike wet foliage should not be misted, so use a very long interval such as 60 or more.
 - Fertilizing: heavy feeders every 14-21 days during growth; most houseplants every 30-45 days; succulents, cacti and slow growers every 60-90 days.
-Pick the numbers that fit this exact species and be willing to give different values for each of the three.`;
+Pick the numbers that fit this exact species and be willing to give different values for each of the three.
+
+Also give suggested_targets: the healthy ranges for this species as read by a handheld soil meter, so the owner can be warned when a reading falls outside them. Use soil moisture % (meter scale 0-100; succulents and cacti roughly 10-30, most tropicals 30-60, ferns and calatheas 50-80), soil nutrient % (0-100; heavy feeders higher, slow growers lower), light in lux (low-light plants roughly 1000-5000, medium 5000-15000, bright/sun lovers 15000-50000), soil pH, and a maximum water EC in µS/cm (sensitive plants such as calatheas and orchids about 500-800, most houseplants about 1000-1500). Use null for a bound that does not matter.`;
 
 export const DIAGNOSE_SYSTEM_PROMPT = `You are a plant health diagnosis assistant.
 
@@ -31,10 +33,14 @@ export const IDENTIFY_USER_PROMPT = "Identify this plant from the photo.";
  * The user's name is authoritative: the model should not second-guess it from
  * the photo, only fill in the canonical names and species-specific care.
  */
-export function buildIdentifyUserPrompt(speciesName?: string | null): string {
+export function buildIdentifyUserPrompt(speciesName?: string | null, soilTest: SoilTestContext | null = null): string {
   const name = speciesName?.trim();
-  if (!name) return IDENTIFY_USER_PROMPT;
-  return `The owner says this plant is "${name}". Treat that as correct even if the photo looks different. Return that species' canonical common and scientific names, set confidence to 1, and give care guidance and intervals specific to it.`;
+  const base = name
+    ? `The owner says this plant is "${name}". Treat that as correct even if the photo looks different. Return that species' canonical common and scientific names, set confidence to 1, and give care guidance and intervals specific to it.`
+    : IDENTIFY_USER_PROMPT;
+  const reading = describeSoilTest(soilTest);
+  if (!reading) return base;
+  return `${base} Most recent soil meter reading: ${reading}. Use it to tune the plan for how this plant is actually doing: e.g. if the soil is drier or wetter than the species norm, shorten or lengthen the watering interval, and let low or high nutrients, light or EC adjust the fertilizing interval and the suggested_targets.`;
 }
 export const DIAGNOSE_USER_PROMPT =
   "Diagnose any health issues visible in this photo of my plant.";
@@ -48,13 +54,25 @@ export interface SoilTestContext {
   tdsPpm: number | null;
 }
 
-/**
- * Appends the plant's latest soil meter reading to the diagnose prompt, if
- * any of its fields were provided — a meter reading is whatever the user
- * happened to check, so partial readings are expected.
- */
-export function buildDiagnoseUserPrompt(soilTest: SoilTestContext | null): string {
-  if (!soilTest) return DIAGNOSE_USER_PROMPT;
+/** Validates an untrusted `soilTest` request payload; null if it isn't an object or has no numeric readings. */
+export function parseSoilTestContext(value: unknown): SoilTestContext | null {
+  if (typeof value !== "object" || value === null) return null;
+  const v = value as Record<string, unknown>;
+  const num = (x: unknown) => (typeof x === "number" ? x : null);
+  const context: SoilTestContext = {
+    ph: num(v.ph),
+    moisturePercent: num(v.moisturePercent),
+    nutrientPercent: num(v.nutrientPercent),
+    lightLux: num(v.lightLux),
+    ecUsCm: num(v.ecUsCm),
+    tdsPpm: num(v.tdsPpm),
+  };
+  return Object.values(context).every((x) => x === null) ? null : context;
+}
+
+/** "pH 6.5, soil moisture 40%, …" for whichever fields were provided, or null when none were. */
+function describeSoilTest(soilTest: SoilTestContext | null): string | null {
+  if (!soilTest) return null;
 
   const parts: string[] = [];
   if (soilTest.ph !== null) parts.push(`pH ${soilTest.ph}`);
@@ -64,6 +82,15 @@ export function buildDiagnoseUserPrompt(soilTest: SoilTestContext | null): strin
   if (soilTest.ecUsCm !== null) parts.push(`water EC ${soilTest.ecUsCm} µS/cm`);
   if (soilTest.tdsPpm !== null) parts.push(`water TDS ${soilTest.tdsPpm} ppm`);
 
-  if (parts.length === 0) return DIAGNOSE_USER_PROMPT;
-  return `${DIAGNOSE_USER_PROMPT} Most recent soil meter reading: ${parts.join(", ")}.`;
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
+/**
+ * Appends the plant's latest soil meter reading to the diagnose prompt, if
+ * any of its fields were provided — a meter reading is whatever the user
+ * happened to check, so partial readings are expected.
+ */
+export function buildDiagnoseUserPrompt(soilTest: SoilTestContext | null): string {
+  const reading = describeSoilTest(soilTest);
+  return reading ? `${DIAGNOSE_USER_PROMPT} Most recent soil meter reading: ${reading}.` : DIAGNOSE_USER_PROMPT;
 }

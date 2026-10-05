@@ -5,6 +5,32 @@ export type PhotoType = "identification" | "diagnosis" | "general";
 export type DiagnosisUrgency = "low" | "medium" | "high";
 export type CareStatus = "ok" | "overdue" | "not-tracked";
 
+/** An acceptable range for one metric; a `null` bound means unbounded on that side. */
+export interface TargetRange {
+  min: number | null;
+  max: number | null;
+}
+
+/** What a plant needs, to judge meter readings against. Each metric is optional. */
+export interface CareTargets {
+  moisturePercent: TargetRange | null;
+  nutrientPercent: TargetRange | null;
+  lightLux: TargetRange | null;
+  ph: TargetRange | null;
+  ecUsCm: TargetRange | null;
+}
+
+/** The newest soil test, denormalized onto the plant so the dashboard needn't query every plant's readings. */
+export interface LatestReading {
+  ph: number | null;
+  moisturePercent: number | null;
+  nutrientPercent: number | null;
+  lightLux: number | null;
+  ecUsCm: number | null;
+  tdsPpm: number | null;
+  occurredAt: Date;
+}
+
 export interface Plant {
   id: string;
   nickname: string;
@@ -16,6 +42,8 @@ export interface Plant {
   wateringIntervalDays: number | null;
   fertilizingIntervalDays: number | null;
   mistingIntervalDays: number | null;
+  targets: CareTargets | null;
+  latestReading: LatestReading | null;
   lastWateredAt: Date | null;
   lastFertilizedAt: Date | null;
   lastMistedAt: Date | null;

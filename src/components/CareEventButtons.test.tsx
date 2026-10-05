@@ -18,6 +18,8 @@ function makePlant(overrides: Partial<Plant> = {}): Plant {
     wateringIntervalDays: null,
     fertilizingIntervalDays: null,
     mistingIntervalDays: null,
+    targets: null,
+    latestReading: null,
     lastWateredAt: null,
     lastFertilizedAt: null,
     lastMistedAt: null,

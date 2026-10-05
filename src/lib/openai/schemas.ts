@@ -13,6 +13,17 @@ export const IdentificationResultSchema = z.object({
   suggested_watering_interval_days: z.number().int().positive(),
   suggested_fertilizing_interval_days: z.number().int().positive(),
   suggested_misting_interval_days: z.number().int().positive(),
+  suggested_targets: z.object({
+    moisture_min_percent: z.number().nullable(),
+    moisture_max_percent: z.number().nullable(),
+    nutrient_min_percent: z.number().nullable(),
+    nutrient_max_percent: z.number().nullable(),
+    light_min_lux: z.number().nullable(),
+    light_max_lux: z.number().nullable(),
+    ph_min: z.number().nullable(),
+    ph_max: z.number().nullable(),
+    ec_max_us_cm: z.number().nullable(),
+  }),
 });
 export type IdentificationResult = z.infer<typeof IdentificationResultSchema>;
 

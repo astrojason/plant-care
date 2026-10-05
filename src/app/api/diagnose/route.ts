@@ -1,22 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleVisionRequest } from "@/lib/openai/visionRoute";
 import { DiagnosisResultSchema } from "@/lib/openai/schemas";
-import { buildDiagnoseUserPrompt, DIAGNOSE_SYSTEM_PROMPT, type SoilTestContext } from "@/lib/openai/prompts";
-
-function parseSoilTestContext(value: unknown): SoilTestContext | null {
-  if (typeof value !== "object" || value === null) return null;
-  const v = value as Record<string, unknown>;
-  const num = (x: unknown) => (typeof x === "number" ? x : null);
-  const context: SoilTestContext = {
-    ph: num(v.ph),
-    moisturePercent: num(v.moisturePercent),
-    nutrientPercent: num(v.nutrientPercent),
-    lightLux: num(v.lightLux),
-    ecUsCm: num(v.ecUsCm),
-    tdsPpm: num(v.tdsPpm),
-  };
-  return Object.values(context).every((x) => x === null) ? null : context;
-}
+import { buildDiagnoseUserPrompt, DIAGNOSE_SYSTEM_PROMPT, parseSoilTestContext } from "@/lib/openai/prompts";
 
 export async function POST(request: Request) {
   // Diagnosis always attaches to an existing plant (no standalone diagnosis
