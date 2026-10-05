@@ -29,15 +29,7 @@ export default function LoginPage() {
     <main className="flex flex-col" style={{ minHeight: "100dvh" }}>
       <div style={{ position: "relative", flex: "1 1 0", minHeight: 140, maxHeight: 420 }}>
         {/* eslint-disable-next-line @next/next/no-img-element -- static SVG illustration */}
-        <img src="/hero.svg" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%", position: "absolute", inset: 0 }} />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "linear-gradient(to bottom, transparent 30%, var(--color-bg) 62%)",
-            pointerEvents: "none",
-          }}
-        />
+        <img src="/hero.svg" alt="" style={{ width: "100%", height: "100%", objectFit: "contain", position: "absolute", inset: 0, padding: "var(--space-4)" }} />
       </div>
 
       <div className="flex flex-col" style={{ padding: "0 26px calc(28px + env(safe-area-inset-bottom))", gap: "var(--space-3)", flex: "none" }}>
