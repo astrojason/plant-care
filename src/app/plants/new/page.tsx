@@ -316,18 +316,21 @@ function AddPlantContent() {
             ))}
           </div>
 
-          <div className="seg">
-            {locationOptions.map((loc) => (
-              <label key={loc} className="seg-opt">
-                <input
-                  type="radio"
-                  name="location"
-                  checked={values.location === loc}
-                  onChange={() => setValues((v) => (v ? { ...v, location: loc } : v))}
-                />
-                {loc}
-              </label>
-            ))}
+          <div className="field">
+            <label htmlFor="add-plant-location">Location</label>
+            <select
+              id="add-plant-location"
+              className="input"
+              value={values.location ?? ""}
+              onChange={(e) => setValues((v) => (v ? { ...v, location: e.target.value || null } : v))}
+            >
+              <option value="">No location</option>
+              {locationOptions.map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
+            </select>
           </div>
 
           {error !== null && <ErrorBlock error={error} title="Something went wrong" />}
