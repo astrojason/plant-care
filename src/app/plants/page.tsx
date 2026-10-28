@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   collection,
   onSnapshot,
@@ -15,8 +16,9 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { AppShell } from "@/components/AppShell";
 import { ErrorBlock } from "@/components/ErrorBlock";
 import { compareByUrgency, getCareStatus, getMostUrgentTask } from "@/lib/care/schedule";
-import { mapPlantDoc } from "@/lib/firestore/mappers";
-import type { CareStatus, Plant } from "@/lib/types/plant";
+import { mapDiagnosisDoc, mapPlantDoc } from "@/lib/firestore/mappers";
+import { useMediaQuery } from "@/lib/useMediaQuery";
+import type { CareStatus, Diagnosis, Plant } from "@/lib/types/plant";
 
 const NUMBER_WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
 function numberWord(n: number): string {
@@ -71,8 +73,105 @@ function CareIcons({ plant, now }: { plant: Plant; now: Date }) {
   );
 }
 
+function DiagnosisCard({ uid, plant }: { uid: string; plant: Plant | undefined }) {
+  const [diagnoses, setDiagnoses] = useState<Diagnosis[] | null>(null);
+  const plantId = plant?.id;
+
+  useEffect(() => {
+    if (!plantId) return;
+    return onSnapshot(
+      collection(db, "users", uid, "plants", plantId, "diagnoses"),
+      (snap: QuerySnapshot<DocumentData>) =>
+        setDiagnoses(snap.docs.map((d) => mapDiagnosisDoc(d.id, d.data())).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())),
+      () => setDiagnoses([])
+    );
+  }, [uid, plantId]);
+
+  const latest = plantId ? diagnoses?.[0] : undefined;
+  return (
+    <aside className="card flex flex-col gap-[var(--space-2)]" aria-label="Latest diagnosis">
+      <span className="kicker">Latest diagnosis</span>
+      {!plant ? (
+        <p className="text-secondary" style={{ fontSize: 13, margin: 0 }}>No plants to show.</p>
+      ) : latest ? (
+        <>
+          <Link href={`/plants/${plant.id}`} style={{ fontSize: 17, fontWeight: 500, color: "inherit", textDecoration: "none" }}>
+            {plant.nickname}
+          </Link>
+          <span className="text-tertiary" style={{ fontSize: 11 }}>
+            {latest.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {latest.urgency} urgency
+          </span>
+          {latest.detectedIssues.length > 0 && (
+            <span style={{ fontSize: 13 }}>{latest.detectedIssues.map((i) => i.issue).join(", ")}</span>
+          )}
+          <p className="text-secondary" style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>{latest.suggestedTreatment}</p>
+        </>
+      ) : (
+        <>
+          <p className="text-secondary" style={{ fontSize: 13, margin: 0 }}>
+            No diagnoses yet for {plant.nickname}.
+          </p>
+          <Link href="/diagnose" className="btn btn-secondary">
+            Diagnose a plant
+          </Link>
+        </>
+      )}
+    </aside>
+  );
+}
+
+function PlantsTable({ plants, now }: { plants: Plant[]; now: Date }) {
+  const router = useRouter();
+  return (
+    <table className="table plants-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Plant</th>
+          <th>Location</th>
+          <th>Care</th>
+          <th>Next</th>
+        </tr>
+      </thead>
+      <tbody>
+        {plants.map((plant) => {
+          const due = nextDueText(plant, now);
+          return (
+            <tr key={plant.id} onClick={() => router.push(`/plants/${plant.id}`)}>
+              <td style={{ width: 52 }}>
+                {plant.primaryPhotoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage download URL
+                  <img
+                    src={plant.primaryPhotoUrl}
+                    alt=""
+                    style={{ width: 36, height: 36, borderRadius: "var(--radius-sm)", objectFit: "cover", display: "block" }}
+                  />
+                ) : (
+                  <div className="placeholder-tile" style={{ width: 36, height: 36, borderRadius: "var(--radius-sm)" }} />
+                )}
+              </td>
+              <td>
+                <Link href={`/plants/${plant.id}`} style={{ color: "inherit", textDecoration: "none", fontWeight: 500 }}>
+                  {plant.nickname}
+                </Link>
+                {plant.speciesCommonName && (
+                  <div className="text-tertiary" style={{ fontSize: 11 }}>{plant.speciesCommonName}</div>
+                )}
+              </td>
+              <td className="text-secondary">{plant.location ?? "—"}</td>
+              <td><CareIcons plant={plant} now={now} /></td>
+              <td style={{ color: due.accent ? "var(--color-accent)" : "var(--text-secondary)" }}>{due.text}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
 function PlantsContent() {
   const { user } = useAuth();
+  const wide = useMediaQuery("(min-width: 1024px)");
   const [plants, setPlants] = useState<Plant[] | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [query, setQuery] = useState("");
@@ -182,7 +281,20 @@ function PlantsContent() {
         </div>
       )}
 
-      {plants !== null && plants.length > 0 && (
+      {plants !== null && plants.length > 0 && wide && user && (
+        <div className="plants-split">
+          {filtered.length === 0 ? (
+            <p className="text-secondary" style={{ fontSize: 14 }}>
+              No plants match.
+            </p>
+          ) : (
+            <PlantsTable plants={[...attention, ...fine]} now={now} />
+          )}
+          <DiagnosisCard uid={user.uid} plant={filtered[0]} />
+        </div>
+      )}
+
+      {plants !== null && plants.length > 0 && !wide && (
         <div className="flex flex-col">
           {attention.length > 0 && (
             <>

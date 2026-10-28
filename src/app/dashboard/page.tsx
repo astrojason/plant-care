@@ -192,7 +192,7 @@ function DashboardContent() {
       )}
 
       {plants !== null && dueTasks.length > 0 && (
-        <div className="flex flex-col gap-[var(--space-3)]" style={{ flex: "none", minHeight: "max-content" }}>
+        <div className="due-grid" style={{ flex: "none", minHeight: "max-content" }}>
           {dueTasks.map((task) => {
             const Icon = CARE_ICONS[task.careType];
             const key = taskKey(task);

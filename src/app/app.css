@@ -148,3 +148,12 @@
 @keyframes card-leave {
   to { opacity: 0; transform: translateY(-8px); }
 }
+
+/* — web-width layouts — */
+.due-grid { display: flex; flex-direction: column; gap: var(--space-3); }
+.plants-split { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-6); align-items: start; }
+.plants-table td, .plants-table th { vertical-align: middle; }
+.plants-table tbody tr { cursor: pointer; }
+@media (min-width: 1024px) {
+  .due-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

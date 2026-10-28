@@ -13,6 +13,7 @@ vi.mock("@/components/AuthProvider", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/plants",
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 type SnapshotCallback = (snapshot: unknown) => void;
@@ -128,5 +129,23 @@ describe("PlantsPage", () => {
     act(() => capturedOnError?.(new Error("Firestore permission denied")));
 
     expect(screen.getByText("Firestore permission denied")).toBeInTheDocument();
+  });
+
+  it("renders a table beside a latest-diagnosis card at desktop width", () => {
+    vi.stubGlobal("matchMedia", () => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    try {
+      render(<PlantsPage />);
+      act(() => capturedOnNext?.({ docs: [makeDoc("a", { nickname: "Fern", location: "Kitchen" })] }));
+
+      expect(screen.getByRole("table")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Fern" })).toHaveAttribute("href", "/plants/a");
+      expect(screen.getByRole("complementary", { name: /latest diagnosis/i })).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
